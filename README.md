@@ -1,5 +1,5 @@
-# Discord Bot Language Model Interface
-This repo contains both a Terminal version and a Discord bot compatible with the [Text Generation WebUI](https://github.com/oobabooga/text-generation-webui) API Interface
+# Discord Bot Language Model Interface (TLDR version)
+This repo contains a TLDR version of the original bot, both are made by [@Superbox2147](https://github.com/Superbox2147) [Text Generation WebUI](https://github.com/oobabooga/text-generation-webui) API Interface
 
 ## Branches and Credits
 
@@ -13,7 +13,7 @@ Other Variants:
 
 
 # Features
-- Support for conversation logs as text files with basic formatting separated per channel
+- logs a variable amount of messages and generates a summary of them
 - Chatter Blacklisting Built in
 - Two types of filters (From Normal to Strict)
 - Message deletion for exempted non-moderator members
@@ -23,5 +23,5 @@ Note when using filters: No filter is perfect, including the ones in the reposit
 
 # Documentation
 
-Documentation can be found in the Wiki (Currently a WIP!)
+Documentation can be found in the Wiki (Currently a WIP!(refer to the original repo))
 For now, please message superbox2147 on Discord for support
