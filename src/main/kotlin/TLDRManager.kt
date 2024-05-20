@@ -21,7 +21,7 @@ class TLDRManager {
                 it.print("[]")
             }
         }
-        val messageLogs = Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}").readText())
+        val messageLogs = Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}.json").readText())
         val newMessageLogs = mutableListOf<JsonElement>()
         if (messageLogs.size > maxMessageLogLength - 1) {
             for (i in 1..<maxMessageLogLength) {
@@ -33,13 +33,14 @@ class TLDRManager {
             }
         }
         newMessageLogs.add(Json.decodeFromString(""""${message.author!!.username}: ${message.content}""""))
+        println(newMessageLogs)
         val finalMessageLogs = buildJsonArray {
             for (i in newMessageLogs) {
                 add(i)
             }
         }
         File("./src/Logs/Messages${message.channel.id}.json").printWriter().use {
-            println(finalMessageLogs)
+            it.print(finalMessageLogs)
         }
     }
     fun clearAllLogs() {
@@ -53,7 +54,9 @@ class TLDRManager {
         val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
         val doStreak = maxStreak >= 0
         val messagesLog = mutableListOf<String>()
-        for (i in Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}").readText())) {
+        if (!File("./src/Logs/Messages${message.channel.id}.json").exists())
+            return "No messages logged for channel"
+        for (i in Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}.json").readText())) {
             messagesLog.add(i.jsonPrimitive.content)
         }
         val chatLog = messagesLog.joinToString("\n")

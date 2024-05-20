@@ -47,4 +47,4 @@ bin/
 src/Blocklist.json
 /src/config.json
 /src/Usernames.json
-!src/logs/.dummy
+src/logs
