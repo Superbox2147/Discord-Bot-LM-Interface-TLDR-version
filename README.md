@@ -1,5 +1,5 @@
 # Discord Bot Language Model Interface (TLDR version)
-This repo contains a TLDR version of the original bot, both are made by [@Superbox2147](https://github.com/Superbox2147) [Text Generation WebUI](https://github.com/oobabooga/text-generation-webui) API Interface
+This repo contains a TLDR version of the original bot, both are made by [@Superbox2147](https://github.com/Superbox2147) and are compatible with the [Text Generation WebUI](https://github.com/oobabooga/text-generation-webui) API Interface
 
 ## Branches and Credits
 
