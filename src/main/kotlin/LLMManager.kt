@@ -92,7 +92,7 @@ class LLMManager {
         return File(logPath).readText()
     }
 
-    private suspend fun sendLLMRequest(input: String, user: String, message: Message): String {
+    suspend fun sendLLMRequest(input: String, user: String, message: Message): String {
         val userStop = Json.decodeFromString<JsonArray>(File("./src/Stop.json").readText())
         val usernames = Json.decodeFromString<JsonArray>(File("./src/Usernames.json").readText()).toMutableList()
         if (!usernames.contains<Any?>(Json.encodeToJsonElement("$user:"))) {

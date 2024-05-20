@@ -32,6 +32,7 @@ val filter = FilterManager()
 val strictFiltering = try { dotenv["STRICT_FILTERING"].toBooleanStrictOrNull()!! } catch (e: NullPointerException) { throw Exception("NonBooleanStrictFilteringException") }
 val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
+val TLDRCore = TLDRManager()
 
 suspend fun main() {
     if (dotenv["TRUNCATION_LENGTH"].toIntOrNull() == null) throw Exception("InvalidTruncationLengthException")
@@ -96,7 +97,7 @@ suspend fun main() {
     kord!!.on<MessageCreateEvent> {
         if (message.channel.asChannel().type == ChannelType.DM && !allowDMs)
             return@on
-        if (message.author?.id == kord.selfId)
+        if (message.author?.id == kord.selfId && (message.content.startsWith("!") || message.mentionedUserIds.contains(kord.selfId) || message.referencedMessage?.author?.id == kord.selfId))
             return@on
         val messageContent = message.content.split(" ")
         if (messageContent.isEmpty())
@@ -104,28 +105,36 @@ suspend fun main() {
         try {
             when (messageContent[0].lowercase()) {
                 "!ping" -> commandManager.ping(message)
-                "!debug" -> commandManager.debug(message)
-                "!bonk" -> commandManager.bonk(message, messageContent)
-                "!reset" -> commandManager.reset(message)
+                //"!debug" -> commandManager.debug(message)
+                //"!bonk" -> commandManager.bonk(message, messageContent)
+                //"!reset" -> commandManager.reset(message)
                 "!stop" -> commandManager.stop(message)
-                "!continue" -> commandManager.continueCmd(message)
-                "!echo" -> {
-                    if (messageContent.size >= 2) {
-                        commandManager.echo(message, messageContent)
-                    } else {
-                        reply(message, "You must specify a message to echo")
-                    }
-                }
+//                "!continue" -> commandManager.continueCmd(message)
+//                "!echo" -> {
+//                    if (messageContent.size >= 2) {
+//                        commandManager.echo(message, messageContent)
+//                    } else {
+//                        reply(message, "You must specify a message to echo")
+//                    }
+//                }
 
-                "!llm" -> {
+                "!tldr" -> {
                     if (messageContent.size == 2) {
                         when (messageContent[1].lowercase()) {
-                            "reset" -> commandManager.reset(message)
+                            "reset" -> TLDRCore.clearAllLogs()
                             "stop" -> commandManager.stop(message)
-                            "continue" -> commandManager.continueCmd(message)
-                            else -> LLM.onCommand(message, messageContent)
+                            //"continue" -> commandManager.continueCmd(message)
+                            else -> reply(message, TLDRCore.TLDR(message))
                         }
-                    } else LLM.onCommand(message, messageContent)
+                    } else {
+                        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+                            println("Blocked user ${message.author!!.username} tried to talk to the bot")
+                            message.channel.createMessage("You are blocked from using that")
+                            return@on
+                        }
+                        val botResponse = TLDRCore.TLDR(message)
+                        reply(message, botResponse)
+                    }//LLM.onCommand(message, messageContent)
                 }
 
                 "!blocklist" -> {
@@ -163,17 +172,27 @@ suspend fun main() {
                             ignoreNext = false
                             return@on
                         }
-                        val botResponse = LLM.onPing(message)
-                        println("$charName: $botResponse")
+                        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+                            println("Blocked user ${message.author!!.username} tried to talk to the bot")
+                            message.channel.createMessage("You are blocked from using that")
+                            return@on
+                        }
+                        val botResponse = TLDRCore.TLDR(message)
                         reply(message, botResponse)
                     } else if (message.referencedMessage?.author?.id == kord.selfId) {
                         if (ignoreNext) {
                             ignoreNext = false
                             return@on
                         }
-                        val botResponse = LLM.onPing(message)
-                        println("$charName: $botResponse")
+                        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+                            println("Blocked user ${message.author!!.username} tried to talk to the bot")
+                            message.channel.createMessage("You are blocked from using that")
+                            return@on
+                        }
+                        val botResponse = TLDRCore.TLDR(message)
                         reply(message, botResponse)
+                    } else {
+                        TLDRCore.saveMessage(message)
                     }
                 }
             }
