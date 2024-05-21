@@ -48,3 +48,7 @@ src/Blocklist.json
 /src/config.json
 /src/Usernames.json
 src/logs
+src/Character
+src/Character/CharacterInfo.LLMD
+src/Character/CharacterName.LLMD
+/src/Character

@@ -1,10 +1,12 @@
 package org.bot
 
 import dev.kord.core.entity.Message
+import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.internal.concurrent.Task
 import java.io.*
 
 class LLMManager {
@@ -93,41 +95,53 @@ class LLMManager {
     }
 
     suspend fun sendLLMRequest(input: String, user: String, message: Message): String {
-        val userStop = Json.decodeFromString<JsonArray>(File("./src/Stop.json").readText())
-        val usernames = Json.decodeFromString<JsonArray>(File("./src/Usernames.json").readText()).toMutableList()
-        if (!usernames.contains<Any?>(Json.encodeToJsonElement("$user:"))) {
-            println("added $user: as a stop token, because $usernames did not contain it")
-            usernames.add(Json.encodeToJsonElement("$user:"))
-            File("src/Usernames.json").printWriter().use {
-                it.print(Json.encodeToString(usernames).trim())
+        return runBlocking {
+            val typing = launch {
+                while (true) {
+                    message.channel.type()
+                }
             }
-        }
-        val stop = buildJsonArray {
-            for (i in userStop) {
-                add(i.jsonPrimitive.content)
-            }
-            for (i in usernames) {
-                add(i.jsonPrimitive.content)
-            }
-            add("\n\n\n")
-            add("$charName:")
-            add("${message.author!!.username}:")
-        }
-        val llmRequest = buildJsonObject {
-            for (i in llmConfig) {
-                put(i.key, i.value)
-            }
-            put("prompt",input)
-            put("character", prompt)
-            put("stop", stop)
-        }
-        message.channel.type()
-        val requestBody = llmRequest.toString().toRequestBody()
-        val request =
-            Request.Builder().url(llmUrl!!).header("Content-Type", "application/json").post(requestBody).build()
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            return Json.decodeFromString<JsonObject>(response.body!!.string()).jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+            val response = async {
+                val userStop = Json.decodeFromString<JsonArray>(File("./src/Stop.json").readText())
+                val usernames =
+                    Json.decodeFromString<JsonArray>(File("./src/Usernames.json").readText()).toMutableList()
+                if (!usernames.contains<Any?>(Json.encodeToJsonElement("$user:"))) {
+                    println("added $user: as a stop token, because $usernames did not contain it")
+                    usernames.add(Json.encodeToJsonElement("$user:"))
+                    File("src/Usernames.json").printWriter().use {
+                        it.print(Json.encodeToString(usernames).trim())
+                    }
+                }
+                val stop = buildJsonArray {
+                    for (i in userStop) {
+                        add(i.jsonPrimitive.content)
+                    }
+                    for (i in usernames) {
+                        add(i.jsonPrimitive.content)
+                    }
+                    add("\n\n\n")
+                    add("$charName:")
+                    add("${message.author!!.username}:")
+                }
+                val llmRequest = buildJsonObject {
+                    for (i in llmConfig) {
+                        put(i.key, i.value)
+                    }
+                    put("prompt", input)
+                    put("character", prompt)
+                    put("stop", stop)
+                }
+                println("\n$llmRequest\n")
+                val requestBody = llmRequest.toString().toRequestBody()
+                val request =
+                    Request.Builder().url(llmUrl!!).header("Content-Type", "application/json").post(requestBody).build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
+                    return@async Json.decodeFromString<JsonObject>(response.body!!.string()).jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+                }
+            }.await()
+            typing.cancel()
+            return@runBlocking response
         }
     }
 

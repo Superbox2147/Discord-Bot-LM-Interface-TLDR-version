@@ -8,7 +8,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.exists
 
 class TLDRManager {
-    private val TLDRPrompt = File("./src/Character/TLDRPrompt.LLMD")
+    private val TLDRPrompt = File("./src/Character/TLDRPrompt.LLMD").readText()
     private val maxMessageLogLength = dotenv["MAX_LOG_LENGTH"].toIntOrNull() ?: 50
     fun saveMessage(message: Message) {
         if (maxMessageLogLength < 5)
@@ -66,9 +66,17 @@ class TLDRManager {
             messagesLog.add(i.jsonPrimitive.content)
         }
         val chatLog = messagesLog.joinToString("\n")
-        val rawResponse = LLM.sendLLMRequest(if (ctxTruncation < 0) {chatLog} else {if (chatLog.length < ctxTruncation) {chatLog} else {chatLog.drop(chatLog.length-ctxTruncation)} } +
-                "\n${message.author!!.username}: $TLDRPrompt" +
-                "\n$charName:", message.author!!.username, message)
+        val rawResponse = LLM.sendLLMRequest("${
+            if (ctxTruncation < 0) {
+                chatLog
+            } else {
+                if (chatLog.length < ctxTruncation) {
+                    chatLog
+                } else {
+                    chatLog.drop(chatLog.length - ctxTruncation)
+                }
+            }
+        }\n${message.author!!.username}: $TLDRPrompt\n$charName:", message.author!!.username, message)
         var unfilteredResponse = ""
         var streakLength = 0
         if (truncationLength < 0) {
@@ -104,6 +112,5 @@ class TLDRManager {
         }
         println("$charName: $botResponse")
         return botResponse
-
     }
 }
