@@ -32,7 +32,9 @@ class TLDRManager {
                 newMessageLogs.add(i)
             }
         }
-        newMessageLogs.add(Json.decodeFromString(""""${message.author!!.username}: ${message.content}""""))
+        //newMessageLogs.add(Json.decodeFromString(""""${message.author!!.username}: ${message.content}""""))
+        val inputMessage = "${message.author!!.username}: ${message.content}"
+        newMessageLogs.add(Json.encodeToJsonElement(inputMessage))
         val finalMessageLogs = buildJsonArray {
             for (i in newMessageLogs) {
                 add(i)
