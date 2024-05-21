@@ -207,7 +207,7 @@ suspend fun main() {
         intents += Intent.MessageContent
         presence {
             status = botStatus.first
-            playing(botStatus.second)
+            watching(botStatus.second)
         }
     }
     println("logged out")
