@@ -121,7 +121,7 @@ suspend fun main() {
                 "!tldr" -> {
                     if (messageContent.size == 2) {
                         when (messageContent[1].lowercase()) {
-                            "reset" -> TLDRCore.clearAllLogs()
+                            "reset" -> TLDRCore.clearAllLogs(message)
                             "stop" -> commandManager.stop(message)
                             //"continue" -> commandManager.continueCmd(message)
                             else -> reply(message, TLDRCore.TLDR(message))

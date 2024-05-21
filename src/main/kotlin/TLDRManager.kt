@@ -42,9 +42,14 @@ class TLDRManager {
             it.print(finalMessageLogs)
         }
     }
-    fun clearAllLogs() {
-        File("./src/Logs").deleteRecursively()
-        File("./src/Logs").mkdir()
+    suspend fun clearAllLogs(message: Message) {
+        if (checkPermissions(message)) {
+            File("./src/Logs").deleteRecursively()
+            File("./src/Logs").mkdir()
+            reply(message, "Message log reset successfully, <@${message.author!!.id}>")
+        } else {
+            reply(message, "Sorry, but you do not have the correct permissions to do so")
+        }
     }
     suspend fun TLDR(message: Message): String {
         println("${message.author!!.username} requested a TLDR")
