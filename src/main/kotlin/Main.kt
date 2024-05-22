@@ -97,7 +97,7 @@ suspend fun main() {
     kord!!.on<MessageCreateEvent> {
         if (message.channel.asChannel().type == ChannelType.DM && !allowDMs)
             return@on
-        if (message.author?.id == kord.selfId && (message.content.startsWith("!") || message.mentionedUserIds.contains(kord.selfId) || message.referencedMessage?.author?.id == kord.selfId))
+        if (message.author?.id == kord.selfId)
             return@on
         val messageContent = message.content.split(" ")
         if (messageContent.isEmpty())

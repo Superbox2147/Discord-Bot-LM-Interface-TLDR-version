@@ -79,6 +79,7 @@ class TLDRManager {
             messagesLog.add(i.jsonPrimitive.content)
         }
         val chatLog = messagesLog.joinToString("\n")
+        clearMessageLogs(message)
         val rawResponse = LLM.sendLLMRequest("${
             if (ctxTruncation < 0) {
                 chatLog
@@ -130,5 +131,10 @@ class TLDRManager {
         val timeMilliseconds = System.currentTimeMillis()
         val timeMinutes = (timeMilliseconds - (timeMilliseconds % 60000)) / 60000
         return timeMinutes
+    }
+    private fun clearMessageLogs(message: Message) {
+        File("./src/Logs/Messages${message.channel.id}.jsom").printWriter().use {
+            it.print("[]")
+        }
     }
 }
