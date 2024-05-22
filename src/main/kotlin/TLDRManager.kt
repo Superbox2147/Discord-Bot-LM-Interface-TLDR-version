@@ -10,6 +10,8 @@ import kotlin.io.path.exists
 class TLDRManager {
     private val TLDRPrompt = File("./src/Character/TLDRPrompt.LLMD").readText()
     private val maxMessageLogLength = dotenv["MAX_LOG_LENGTH"].toIntOrNull() ?: 50
+    private var lastTLDR = 0L
+    private val TLDRCooldown = dotenv["TLDR_COOLDOWN"].toIntOrNull() ?: -1
     fun saveMessage(message: Message) {
         if (maxMessageLogLength < 5)
             println("warning: low message logging length, consider increasing it to make sure the context is saved correctly")
@@ -53,15 +55,26 @@ class TLDRManager {
             reply(message, "Sorry, but you do not have the correct permissions to do so")
         }
     }
-    suspend fun TLDR(message: Message): String {
+    suspend fun TLDR(message: Message) {
+        val currentTime = currentTimeMinutes()
+        if (TLDRCooldown > 0) {
+            if (currentTime < lastTLDR + TLDRCooldown) {
+                reply(message, "On cooldown, come back in at most $TLDRCooldown minutes")
+                return
+            } else {
+                lastTLDR = currentTime
+            }
+        }
         println("${message.author!!.username} requested a TLDR")
         val ctxTruncation = dotenv["CTX_TRUNCATION"].toIntOrNull() ?: -1
         val truncationLength = dotenv["TRUNCATION_LENGTH"].toIntOrNull() ?: -1
         val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
         val doStreak = maxStreak >= 0
         val messagesLog = mutableListOf<String>()
-        if (!File("./src/Logs/Messages${message.channel.id}.json").exists())
-            return "No messages logged for channel"
+        if (!File("./src/Logs/Messages${message.channel.id}.json").exists()) {
+            reply(message, "No messages logged for channel")
+            return
+        }
         for (i in Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}.json").readText())) {
             messagesLog.add(i.jsonPrimitive.content)
         }
@@ -111,6 +124,11 @@ class TLDRManager {
             filter.filterStrict(unfilteredResponse)
         }
         println("$charName: $botResponse")
-        return botResponse
+        reply(message, botResponse)
+    }
+    private fun currentTimeMinutes(): Long {
+        val timeMilliseconds = System.currentTimeMillis()
+        val timeMinutes = (timeMilliseconds - (timeMilliseconds % 60000)) / 60000
+        return timeMinutes
     }
 }

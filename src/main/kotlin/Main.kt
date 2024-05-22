@@ -124,7 +124,7 @@ suspend fun main() {
                             "reset" -> TLDRCore.clearAllLogs(message)
                             "stop" -> commandManager.stop(message)
                             //"continue" -> commandManager.continueCmd(message)
-                            else -> reply(message, TLDRCore.TLDR(message))
+                            else -> TLDRCore.TLDR(message)
                         }
                     } else {
                         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
@@ -132,8 +132,7 @@ suspend fun main() {
                             message.channel.createMessage("You are blocked from using that")
                             return@on
                         }
-                        val botResponse = TLDRCore.TLDR(message)
-                        reply(message, botResponse)
+                        TLDRCore.TLDR(message)
                     }//LLM.onCommand(message, messageContent)
                 }
 
@@ -177,8 +176,7 @@ suspend fun main() {
                             message.channel.createMessage("You are blocked from using that")
                             return@on
                         }
-                        val botResponse = TLDRCore.TLDR(message)
-                        reply(message, botResponse)
+                        TLDRCore.TLDR(message)
                     } else if (message.referencedMessage?.author?.id == kord.selfId) {
                         if (ignoreNext) {
                             ignoreNext = false
@@ -189,8 +187,7 @@ suspend fun main() {
                             message.channel.createMessage("You are blocked from using that")
                             return@on
                         }
-                        val botResponse = TLDRCore.TLDR(message)
-                        reply(message, botResponse)
+                        TLDRCore.TLDR(message)
                     } else {
                         TLDRCore.saveMessage(message)
                     }
