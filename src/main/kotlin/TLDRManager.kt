@@ -10,7 +10,7 @@ import kotlin.io.path.exists
 class TLDRManager {
     private val TLDRPrompt = File("./src/Character/TLDRPrompt.LLMD").readText()
     private val maxMessageLogLength = dotenv["MAX_LOG_LENGTH"].toIntOrNull() ?: 50
-    private var lastTLDR = 0L
+    private var lastTLDRs = mutableMapOf<String, Long>()
     private val TLDRCooldown = dotenv["TLDR_COOLDOWN"].toIntOrNull() ?: -1
     fun saveMessage(message: Message) {
         if (maxMessageLogLength < 5)
@@ -56,6 +56,11 @@ class TLDRManager {
         }
     }
     suspend fun TLDR(message: Message) {
+        val lastTLDR = if (lastTLDRs["${message.channel.id}"] == null) {
+            0
+        } else {
+            lastTLDRs["${message.channel.id}"]!!
+        }
         println("${message.author!!.username} requested a TLDR")
         if (!File("./src/Logs/Messages${message.channel.id}.json").exists()) {
             reply(message, "No messages logged for channel")
@@ -67,7 +72,7 @@ class TLDRManager {
                 reply(message, "On cooldown, come back in at most $TLDRCooldown minutes")
                 return
             } else {
-                lastTLDR = currentTime
+                lastTLDRs["${message.channel.id}"] = currentTime
             }
         }
         val ctxTruncation = dotenv["CTX_TRUNCATION"].toIntOrNull() ?: -1
