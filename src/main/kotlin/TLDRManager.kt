@@ -47,6 +47,11 @@ class TLDRManager {
         }
     }
     suspend fun clearAllLogs(message: Message) {
+        println("${message.author!!.username} requested a TLDR")
+        if (!File("./src/Logs/Messages${message.channel.id}.json").exists()) {
+            reply(message, "No messages logged for channel")
+            return
+        }
         if (checkPermissions(message)) {
             File("./src/Logs").deleteRecursively()
             File("./src/Logs").mkdir()
@@ -65,16 +70,11 @@ class TLDRManager {
                 lastTLDR = currentTime
             }
         }
-        println("${message.author!!.username} requested a TLDR")
         val ctxTruncation = dotenv["CTX_TRUNCATION"].toIntOrNull() ?: -1
         val truncationLength = dotenv["TRUNCATION_LENGTH"].toIntOrNull() ?: -1
         val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
         val doStreak = maxStreak >= 0
         val messagesLog = mutableListOf<String>()
-        if (!File("./src/Logs/Messages${message.channel.id}.json").exists()) {
-            reply(message, "No messages logged for channel")
-            return
-        }
         for (i in Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}.json").readText())) {
             messagesLog.add(i.jsonPrimitive.content)
         }
