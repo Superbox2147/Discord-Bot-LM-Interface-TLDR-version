@@ -47,11 +47,6 @@ class TLDRManager {
         }
     }
     suspend fun clearAllLogs(message: Message) {
-        println("${message.author!!.username} requested a TLDR")
-        if (!File("./src/Logs/Messages${message.channel.id}.json").exists()) {
-            reply(message, "No messages logged for channel")
-            return
-        }
         if (checkPermissions(message)) {
             File("./src/Logs").deleteRecursively()
             File("./src/Logs").mkdir()
@@ -61,6 +56,11 @@ class TLDRManager {
         }
     }
     suspend fun TLDR(message: Message) {
+        println("${message.author!!.username} requested a TLDR")
+        if (!File("./src/Logs/Messages${message.channel.id}.json").exists()) {
+            reply(message, "No messages logged for channel")
+            return
+        }
         val currentTime = currentTimeMinutes()
         if (TLDRCooldown > 0) {
             if (currentTime < lastTLDR + TLDRCooldown) {
@@ -133,7 +133,7 @@ class TLDRManager {
         return timeMinutes
     }
     private fun clearMessageLogs(message: Message) {
-        File("./src/Logs/Messages${message.channel.id}.jsom").printWriter().use {
+        File("./src/Logs/Messages${message.channel.id}.json").printWriter().use {
             it.print("[]")
         }
     }
