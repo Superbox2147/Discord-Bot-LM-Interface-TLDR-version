@@ -95,8 +95,8 @@ class LLMManager {
     }
 
     suspend fun sendLLMRequest(input: String, user: String, message: Message): String {
-        return runBlocking(Dispatchers.Default) {
-            val typing = async {
+        return runBlocking {
+            val typing = launch(Dispatchers.Default) {
                 while (true) {
                     message.channel.type()
                     delay(1000L)
