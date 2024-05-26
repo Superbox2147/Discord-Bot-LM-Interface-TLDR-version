@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter
 
 class CommandManager {
     suspend fun ping(message: Message) {
-        message.channel.createMessage("pong!")
+        message.channel.createMessage("pong!\nAverage gateway ping: ${kord!!.gateway.averagePing}")
     }
 
     suspend fun debug(message: Message) {
@@ -27,6 +27,7 @@ class CommandManager {
     suspend fun stop(message: Message) {
         if (checkPermissions(message)) {
             message.channel.createMessage("The bot is shutting down. Please ping the host if you wish to restart it.")
+            loginAgain = false
             kord!!.logout()
         }  else {
             message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
@@ -142,6 +143,16 @@ class CommandManager {
         println("$charName: $botResponse")
         message.reply {
             content = botResponse
+        }
+    }
+
+    suspend fun relog(message: Message) {
+        if (checkPermissions(message)){
+            println("The bot was commanded to relog by ${message.author!!.username}")
+            kord!!.logout()
+        } else {
+            println("${message.author!!.username} tried to make the bot relogin, but they lack the permissions to do so")
+            reply(message, "Sorry, but you do not have the correct permissions to do so")
         }
     }
 }

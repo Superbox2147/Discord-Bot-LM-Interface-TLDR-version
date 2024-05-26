@@ -33,8 +33,11 @@ val strictFiltering = try { dotenv["STRICT_FILTERING"].toBooleanStrictOrNull()!!
 val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
 val TLDRCore = TLDRManager()
+var loginAgain = true
+const val botVersion = "Discord bot LMI by Superbox\nV1.0.1 (TLDR)"
 
 suspend fun main() {
+    println("Starting $botVersion")
     if (dotenv["TRUNCATION_LENGTH"].toIntOrNull() == null) throw Exception("InvalidTruncationLengthException")
     if (llmUrl == null || llmUrl == "") throw Exception("NoLLLMURLException")
     if (owners.isEmpty()) throw Exception("NoOwnersException")
@@ -124,6 +127,7 @@ suspend fun main() {
                             "reset" -> TLDRCore.clearAllLogs(message)
                             "stop" -> commandManager.stop(message)
                             //"continue" -> commandManager.continueCmd(message)
+                            "relog" -> commandManager.relog(message)
                             else -> TLDRCore.TLDR(message)
                         }
                     } else {
@@ -198,13 +202,15 @@ suspend fun main() {
             println(e.toString())}
         }
     println("ready")
-    println("Logging in as ${kord!!.getSelf().username}")
-    kord!!.login {
-        @OptIn(PrivilegedIntent::class)
-        intents += Intent.MessageContent
-        presence {
-            status = botStatus.first
-            watching(botStatus.second)
+    while (loginAgain) {
+        println("Logging in as ${kord!!.getSelf().username}")
+        kord!!.login {
+            @OptIn(PrivilegedIntent::class)
+            intents += Intent.MessageContent
+            presence {
+                status = botStatus.first
+                watching(botStatus.second)
+            }
         }
     }
     println("logged out")
