@@ -100,7 +100,7 @@ class TLDRManager {
                     chatLog.drop(chatLog.length - ctxTruncation)
                 }
             }
-        }\n${message.author!!.username}: $TLDRPrompt\n$charName:", message.author!!.username, message)
+        }\n${filter.clean(message.author!!.username)}: $TLDRPrompt\n$charName:", message.author!!.username, message)
         var unfilteredResponse = ""
         var streakLength = 0
         if (truncationLength < 0) {

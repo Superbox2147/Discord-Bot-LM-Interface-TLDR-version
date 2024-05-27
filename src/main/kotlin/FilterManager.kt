@@ -105,5 +105,5 @@ class FilterManager {
         }
         return filtered.joinToString(" ")
     }
-    private fun clean(input: String) = input.replace(regexPattern, "")
+    fun clean(input: String) = input.replace(regexPattern, "")
 }
