@@ -34,14 +34,13 @@ val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
 val TLDRCore = TLDRManager()
 var loginAgain = true
-const val botVersion = "Discord bot LMI by Superbox\nV1.0.1 (TLDR)"
+const val botVersion = "Discord bot LMI by Superbox\nV1.0.1 (TLDR)\n"
 
 suspend fun main() {
     println("Starting $botVersion")
     if (dotenv["TRUNCATION_LENGTH"].toIntOrNull() == null) throw Exception("InvalidTruncationLengthException")
     if (llmUrl == null || llmUrl == "") throw Exception("NoLLLMURLException")
     if (owners.isEmpty()) throw Exception("NoOwnersException")
-    println("Token: $botToken")
     println("Owners: $owners")
     println("LLMUrl: $llmUrl")
     if (!File("./src/Logs").exists()) File("./src/Logs").mkdir()

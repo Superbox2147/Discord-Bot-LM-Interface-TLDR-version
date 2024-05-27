@@ -66,10 +66,19 @@ class TLDRManager {
             reply(message, "No messages logged for channel")
             return
         }
+        val messagesLog = mutableListOf<String>()
+        for (i in Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}.json").readText())) {
+            messagesLog.add(i.jsonPrimitive.content)
+        }
+        val minimumMessages = dotenv["MINIMUM_MESSAGES"].toIntOrNull() ?: -1
+        if (minimumMessages > 0 && messagesLog.size < minimumMessages) {
+            reply(message, "Less than $minimumMessages messages logged on channel")
+            return
+        }
         val currentTime = currentTimeMinutes()
         if (TLDRCooldown > 0) {
             if (currentTime < lastTLDR + TLDRCooldown) {
-                reply(message, "On cooldown, come back in at most $TLDRCooldown minutes")
+                reply(message, "On cooldown, come back approximately <t:${getTLDRCooldownTimestamp(TLDRCooldown, lastTLDR)}:R>")
                 return
             } else {
                 lastTLDRs["${message.channel.id}"] = currentTime
@@ -79,10 +88,6 @@ class TLDRManager {
         val truncationLength = dotenv["TRUNCATION_LENGTH"].toIntOrNull() ?: -1
         val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
         val doStreak = maxStreak >= 0
-        val messagesLog = mutableListOf<String>()
-        for (i in Json.decodeFromString<JsonArray>(File("./src/Logs/Messages${message.channel.id}.json").readText())) {
-            messagesLog.add(i.jsonPrimitive.content)
-        }
         val chatLog = messagesLog.joinToString("\n")
         clearMessageLogs(message)
         val rawResponse = LLM.sendLLMRequest("${
@@ -132,14 +137,18 @@ class TLDRManager {
         println("$charName: $botResponse")
         reply(message, botResponse)
     }
+
     private fun currentTimeMinutes(): Long {
         val timeMilliseconds = System.currentTimeMillis()
         val timeMinutes = (timeMilliseconds - (timeMilliseconds % 60000)) / 60000
         return timeMinutes
     }
+
     private fun clearMessageLogs(message: Message) {
         File("./src/Logs/Messages${message.channel.id}.json").printWriter().use {
             it.print("[]")
         }
     }
+
+    private fun getTLDRCooldownTimestamp(TLDRCooldown: Int, lastTLDR: Long) = (lastTLDR + TLDRCooldown) * 60
 }
