@@ -34,7 +34,7 @@ val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
 val TLDRCore = TLDRManager()
 var loginAgain = true
-const val botVersion = "Discord bot LMI by Superbox\nV1.0.1 (TLDR)\n"
+const val botVersion = "Discord bot LMI by Superbox\nV1.1.0 (TLDR)\n"
 
 suspend fun main() {
     println("Starting $botVersion")
