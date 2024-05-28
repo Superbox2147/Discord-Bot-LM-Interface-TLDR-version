@@ -245,6 +245,6 @@ fun getStatus(): Pair<PresenceStatus, String> {
     } else {
         PresenceStatus.Invisible
     }
-    val presence = dotenv["PRESENCE"] ?: "Chat with !LLM"
+    val presence = dotenv["PRESENCE"] ?: "TLDR chat with !TLDR"
     return Pair(status, presence)
 }
