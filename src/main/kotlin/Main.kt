@@ -185,17 +185,6 @@ suspend fun main() {
                             return@on
                         }
                         TLDRCore.TLDR(message)
-                    } else if (message.referencedMessage?.author?.id == kord.selfId) {
-                        if (ignoreNext) {
-                            ignoreNext = false
-                            return@on
-                        }
-                        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
-                            println("Blocked user ${message.author!!.username} tried to talk to the bot")
-                            message.channel.createMessage("You are blocked from using that")
-                            return@on
-                        }
-                        TLDRCore.TLDR(message)
                     } else {
                         TLDRCore.saveMessage(message)
                     }

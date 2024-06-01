@@ -138,7 +138,8 @@ class LLMManager {
                     Request.Builder().url(llmUrl!!).header("Content-Type", "application/json").post(requestBody).build()
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) throw IOException("Unexpected code $response")
-                    return@async Json.decodeFromString<JsonObject>(response.body!!.string()).jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+                    val outputJson = Json.decodeFromString<JsonObject>(response.body!!.string())
+                    return@async outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
                 }
             }.await()
             typing.cancel()

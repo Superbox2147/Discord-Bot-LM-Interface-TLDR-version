@@ -141,9 +141,7 @@ class CommandManager {
         println("${message.author!!.username} continued the generation")
         val botResponse = LLM.generationContinue(message)
         println("$charName: $botResponse")
-        message.reply {
-            content = botResponse
-        }
+        reply(message, botResponse)
     }
 
     suspend fun relog(message: Message) {
