@@ -55,12 +55,12 @@ class TLDRManager {
         }
     }
     suspend fun TLDR(message: Message) {
+        println("${message.author!!.username} requested a TLDR")
         val lastTLDR = if (lastTLDRs["${message.channel.id}"] == null) {
             0
         } else {
             lastTLDRs["${message.channel.id}"]!!
         }
-        println("${message.author!!.username} requested a TLDR")
         if (!File("./src/Logs/Messages${message.channel.id}.json").exists()) {
             reply(message, "No messages logged for channel")
             return
@@ -70,8 +70,9 @@ class TLDRManager {
             messagesLog.add(i.jsonPrimitive.content)
         }
         val minimumMessages = dotenv["MINIMUM_MESSAGES"].toIntOrNull() ?: -1
-        if (minimumMessages > 0 && messagesLog.size < minimumMessages) {
-            reply(message, "Less than $minimumMessages messages logged on channel")
+        val messagesLoggedCount = messagesLog.size
+        if (minimumMessages > 0 && messagesLoggedCount < minimumMessages) {
+            reply(message, "Less than $minimumMessages messages logged on channel, ${minimumMessages - messagesLoggedCount} more messages required.")
             return
         }
         val currentTime = currentTimeMinutes()
