@@ -131,7 +131,12 @@ suspend fun main() {
                         when (messageContent[1].lowercase()) {
                             "reset" -> TLDRCore.clearAllLogs(message)
                             "stop" -> commandManager.stop(message)
-                            //"continue" -> commandManager.continueCmd(message)
+                            "retry" -> try {
+                                TLDRCore.regenerate(message)
+                            } catch (e: LLMAPIException) {
+                                println("LLM API access failed")
+                                reply(message, apiErrorMessage)
+                            }
                             "relog" -> commandManager.relog(message)
                             else -> try {
                                 TLDRCore.TLDR(message)

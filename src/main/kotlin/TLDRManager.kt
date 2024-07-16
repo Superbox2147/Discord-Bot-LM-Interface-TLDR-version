@@ -14,6 +14,12 @@ class TLDRManager {
     private var lastTLDRs = mutableMapOf<String, Long>()
     private val TLDRCooldown = dotenv["TLDR_COOLDOWN"].toIntOrNull() ?: -1
     private val targetMinimumLength = dotenv["TLDR_MINIMUM_CHARACTERS"].toIntOrNull() ?: -1
+    private val previousTLDRLLMPrompts = mutableMapOf<String, String>()
+    private val ctxTruncation = dotenv["CTX_TRUNCATION"].toIntOrNull() ?: -1
+    private val truncationLength = dotenv["TRUNCATION_LENGTH"].toIntOrNull() ?: -1
+    private val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
+    private val doStreak = maxStreak >= 0
+
     fun saveMessage(message: Message) {
         if (maxMessageLogLength < 5)
             println("warning: low message logging length, consider increasing it to make sure the context is saved correctly")
@@ -47,6 +53,7 @@ class TLDRManager {
             it.print(finalMessageLogs)
         }
     }
+
     suspend fun clearAllLogs(message: Message) {
         if (checkPermissions(message)) {
             File("./src/Logs").deleteRecursively()
@@ -56,6 +63,7 @@ class TLDRManager {
             reply(message, "Sorry, but you do not have the correct permissions to do so")
         }
     }
+
     suspend fun TLDR(message: Message) {
         println("${message.author!!.username} requested a TLDR")
         val lastTLDR = if (lastTLDRs["${message.channel.id}"] == null) {
@@ -84,10 +92,6 @@ class TLDRManager {
                 return
             }
         }
-        val ctxTruncation = dotenv["CTX_TRUNCATION"].toIntOrNull() ?: -1
-        val truncationLength = dotenv["TRUNCATION_LENGTH"].toIntOrNull() ?: -1
-        val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
-        val doStreak = maxStreak >= 0
         val chatLog = messagesLog.joinToString("\n")
         val inputToLLM = "${
             if (ctxTruncation < 0) {
@@ -131,16 +135,65 @@ class TLDRManager {
                 }
             }
         }
-
+        previousTLDRLLMPrompts["${message.channel.id}"] = inputToLLM
         lastTLDRs["${message.channel.id}"] = currentTime
         clearMessageLogs(message)
+        val botResponse = processResponse(rawResponse)
+        println("$charName: $botResponse")
+        reply(message, botResponse)
+    }
+
+    suspend fun regenerate(message: Message) {
+        println("${message.author!!.username} requested a regeneration")
+        if (previousTLDRLLMPrompts["${message.channel.id}"] == null) {
+            reply(message, "No previous TLDR on channel")
+            return
+        }
+        val inputToLLM = previousTLDRLLMPrompts["${message.channel.id}"]!!
+        val firstResponse = try {
+            LLM.sendLLMRequest(
+                inputToLLM,
+                message.author!!.username,
+                message
+            )
+        } catch (e: IOException) {
+            throw LLMAPIException()
+        }
+        val rawResponse = if (targetMinimumLength <= 0) {
+            firstResponse
+        } else {
+            if (firstResponse.length >= targetMinimumLength) {
+                firstResponse
+            } else {
+                val secondResponse = try {
+                    LLM.sendLLMRequest(
+                        inputToLLM,
+                        message.author!!.username,
+                        message
+                    )
+                } catch (e: IOException) {
+                    throw LLMAPIException()
+                }
+                if (secondResponse.length > firstResponse.length) {
+                    secondResponse
+                } else {
+                    firstResponse
+                }
+            }
+        }
+        val botResponse = processResponse(rawResponse)
+        println("$charName: $botResponse")
+        reply(message, botResponse)
+    }
+
+    private fun processResponse(input: String): String {
         var unfilteredResponse = ""
         var streakLength = 0
         if (truncationLength < 0) {
-            unfilteredResponse = rawResponse
+            unfilteredResponse = input
         } else {
             var newlines = 0
-            for (i in rawResponse) {
+            for (i in input) {
                 if (i.toString() == " ") {
                     streakLength++
                 } else if (i.toString() == "\n") {
@@ -162,13 +215,11 @@ class TLDRManager {
             }
         }
         if (unfilteredResponse == "") unfilteredResponse = "..."
-        val botResponse = if (!strictFiltering) {
+        return if (!strictFiltering) {
             filter.filter(unfilteredResponse)
         } else {
             filter.filterStrict(unfilteredResponse)
         }
-        println("$charName: $botResponse")
-        reply(message, botResponse)
     }
 
     private fun currentTimeMinutes(): Long {
