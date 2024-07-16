@@ -13,6 +13,7 @@ class TLDRManager {
     private val maxMessageLogLength = dotenv["MAX_LOG_LENGTH"].toIntOrNull() ?: 50
     private var lastTLDRs = mutableMapOf<String, Long>()
     private val TLDRCooldown = dotenv["TLDR_COOLDOWN"].toIntOrNull() ?: -1
+    private val targetMinimumLength = dotenv["TLDR_MINIMUM_CHARACTERS"].toIntOrNull() ?: -1
     fun saveMessage(message: Message) {
         if (maxMessageLogLength < 5)
             println("warning: low message logging length, consider increasing it to make sure the context is saved correctly")
@@ -88,25 +89,49 @@ class TLDRManager {
         val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
         val doStreak = maxStreak >= 0
         val chatLog = messagesLog.joinToString("\n")
-        val rawResponse =  try {
+        val inputToLLM = "${
+            if (ctxTruncation < 0) {
+                chatLog
+            } else {
+                if (chatLog.length < ctxTruncation) {
+                    chatLog
+                } else {
+                    chatLog.drop(chatLog.length - ctxTruncation)
+                }
+            }
+        }\n${filter.clean(message.author!!.username)}: $TLDRPrompt\n$charName:"
+        val firstResponse = try {
             LLM.sendLLMRequest(
-                "${
-                    if (ctxTruncation < 0) {
-                        chatLog
-                    } else {
-                        if (chatLog.length < ctxTruncation) {
-                            chatLog
-                        } else {
-                            chatLog.drop(chatLog.length - ctxTruncation)
-                        }
-                    }
-                }\n${filter.clean(message.author!!.username)}: $TLDRPrompt\n$charName:",
+                inputToLLM,
                 message.author!!.username,
                 message
             )
         } catch (e: IOException) {
             throw LLMAPIException()
         }
+        val rawResponse = if (targetMinimumLength <= 0) {
+            firstResponse
+        } else {
+            if (firstResponse.length >= targetMinimumLength) {
+                firstResponse
+            } else {
+                val secondResponse = try {
+                    LLM.sendLLMRequest(
+                        inputToLLM,
+                        message.author!!.username,
+                        message
+                    )
+                } catch (e: IOException) {
+                    throw LLMAPIException()
+                }
+                if (secondResponse.length > firstResponse.length) {
+                    secondResponse
+                } else {
+                    firstResponse
+                }
+            }
+        }
+
         lastTLDRs["${message.channel.id}"] = currentTime
         clearMessageLogs(message)
         var unfilteredResponse = ""
