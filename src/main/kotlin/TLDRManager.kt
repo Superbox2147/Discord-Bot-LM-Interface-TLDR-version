@@ -4,6 +4,7 @@ import dev.kord.core.entity.Message
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import java.io.File
+import java.io.IOException
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 
@@ -80,8 +81,6 @@ class TLDRManager {
             if (currentTime < lastTLDR + TLDRCooldown) {
                 reply(message, "On cooldown, come back approximately <t:${getTLDRCooldownTimestamp(TLDRCooldown, lastTLDR)}:R>")
                 return
-            } else {
-                lastTLDRs["${message.channel.id}"] = currentTime
             }
         }
         val ctxTruncation = dotenv["CTX_TRUNCATION"].toIntOrNull() ?: -1
@@ -89,18 +88,27 @@ class TLDRManager {
         val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
         val doStreak = maxStreak >= 0
         val chatLog = messagesLog.joinToString("\n")
+        val rawResponse =  try {
+            LLM.sendLLMRequest(
+                "${
+                    if (ctxTruncation < 0) {
+                        chatLog
+                    } else {
+                        if (chatLog.length < ctxTruncation) {
+                            chatLog
+                        } else {
+                            chatLog.drop(chatLog.length - ctxTruncation)
+                        }
+                    }
+                }\n${filter.clean(message.author!!.username)}: $TLDRPrompt\n$charName:",
+                message.author!!.username,
+                message
+            )
+        } catch (e: IOException) {
+            throw LLMAPIException()
+        }
+        lastTLDRs["${message.channel.id}"] = currentTime
         clearMessageLogs(message)
-        val rawResponse = LLM.sendLLMRequest("${
-            if (ctxTruncation < 0) {
-                chatLog
-            } else {
-                if (chatLog.length < ctxTruncation) {
-                    chatLog
-                } else {
-                    chatLog.drop(chatLog.length - ctxTruncation)
-                }
-            }
-        }\n${filter.clean(message.author!!.username)}: $TLDRPrompt\n$charName:", message.author!!.username, message)
         var unfilteredResponse = ""
         var streakLength = 0
         if (truncationLength < 0) {

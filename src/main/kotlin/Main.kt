@@ -37,6 +37,7 @@ val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
 val TLDRCore = TLDRManager()
 var loginAgain = true
+val apiErrorMessage = dotenv["LLM_API_ERROR_MESSAGE"] ?: "Error accessing LLM API"
 const val botVersion = "Discord bot LMI by Superbox\nV1.1.0 (TLDR)\n"
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -132,7 +133,12 @@ suspend fun main() {
                             "stop" -> commandManager.stop(message)
                             //"continue" -> commandManager.continueCmd(message)
                             "relog" -> commandManager.relog(message)
-                            else -> TLDRCore.TLDR(message)
+                            else -> try {
+                                TLDRCore.TLDR(message)
+                            } catch (e: LLMAPIException) {
+                                println("LLM API access failed")
+                                reply(message, apiErrorMessage)
+                            }
                         }
                     } else {
                         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
@@ -140,7 +146,12 @@ suspend fun main() {
                             message.channel.createMessage("You are blocked from using that")
                             return@on
                         }
-                        TLDRCore.TLDR(message)
+                        try {
+                            TLDRCore.TLDR(message)
+                        } catch (e: LLMAPIException) {
+                            println("LLM API access failed")
+                            reply(message, apiErrorMessage)
+                        }
                     }//LLM.onCommand(message, messageContent)
                 }
 
