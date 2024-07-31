@@ -157,8 +157,42 @@ suspend fun main() {
                             println("LLM API access failed")
                             reply(message, apiErrorMessage)
                         }
-                    }//LLM.onCommand(message, messageContent)
+                    }
                 }
+
+                "!pldt" -> {
+                if (messageContent.size == 2) {
+                    when (messageContent[1].lowercase()) {
+                        "reset" -> TLDRCore.clearAllLogs(message)
+                        "stop" -> commandManager.stop(message)
+                        "retry" -> try {
+                            TLDRCore.regenerate(message)
+                        } catch (e: LLMAPIException) {
+                            println("LLM API access failed")
+                            reply(message, apiErrorMessage)
+                        }
+                        "relog" -> commandManager.relog(message)
+                        else -> try {
+                            TLDRCore.TLDR(message)
+                        } catch (e: LLMAPIException) {
+                            println("LLM API access failed")
+                            reply(message, apiErrorMessage)
+                        }
+                    }
+                } else {
+                    if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+                        println("Blocked user ${message.author!!.username} tried to talk to the bot")
+                        message.channel.createMessage("You are blocked from using that")
+                        return@on
+                    }
+                    try {
+                        TLDRCore.TLDR(message)
+                    } catch (e: LLMAPIException) {
+                        println("LLM API access failed")
+                        reply(message, apiErrorMessage)
+                    }
+                }
+            }
 
                 "!blocklist" -> {
                     if (messageContent.size == 3) {
