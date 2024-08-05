@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import java.io.File
 import java.io.IOException
+import java.lang.NullPointerException
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 
@@ -42,7 +43,7 @@ class TLDRManager {
                 newMessageLogs.add(i)
             }
         }
-        val inputMessage = "${message.author!!.username}: ${message.content}"
+        val inputMessage = try { "${message.author!!.username}: ${message.content}" } catch (e: NullPointerException) { "UnnamedUser: ${message.content}" }
         newMessageLogs.add(Json.encodeToJsonElement(inputMessage))
         val finalMessageLogs = buildJsonArray {
             for (i in newMessageLogs) {
