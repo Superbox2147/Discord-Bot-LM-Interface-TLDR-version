@@ -48,7 +48,7 @@ class StatsManager {
             val prefixCommandUsages = (currentStats["slash_commands"]!!.jsonPrimitive.content.toIntOrNull() ?: 0) + 1
             val jsonData = buildJsonObject {
                 put("prefix_commands", Json.encodeToJsonElement(prefixCommandUsages.toString()))
-                put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"] ?: "0"))
+                put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"]?.jsonPrimitive?.content ?: "0"))
             }
             statsFile.printWriter().use {
                 it.print(jsonData.toString())
@@ -58,7 +58,7 @@ class StatsManager {
         val prefixCommandUsages = 1
         val jsonData = buildJsonObject {
             put("prefix_commands", Json.encodeToJsonElement(prefixCommandUsages.toString()))
-            put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"] ?: "0"))
+            put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"]?.jsonPrimitive?.content ?: "0"))
         }
         statsFile.printWriter().use {
             it.print(jsonData)
