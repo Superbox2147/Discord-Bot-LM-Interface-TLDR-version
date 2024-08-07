@@ -2,8 +2,11 @@ package org.bot
 
 import dev.kord.common.entity.*
 import dev.kord.core.*
+import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.behavior.reply
 import dev.kord.core.entity.*
+import dev.kord.core.entity.interaction.GlobalChatInputCommandInteraction
+import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.message.*
 import dev.kord.gateway.*
 import java.io.*
@@ -16,6 +19,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import okhttp3.*
 import java.util.concurrent.*
+import kotlin.system.exitProcess
 
 val dotenv = dotenv()
 val botToken: String? = dotenv["TOKEN"]
@@ -36,6 +40,7 @@ val strictFiltering = try { dotenv["STRICT_FILTERING"].toBooleanStrictOrNull()!!
 val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
 val TLDRCore = TLDRManager()
+val statsManager = StatsManager()
 var loginAgain = true
 val apiErrorMessage = dotenv["LLM_API_ERROR_MESSAGE"] ?: "Error accessing LLM API"
 const val botVersion = "Discord bot LMI by Superbox\nV1.1.0 (TLDR)\n"
@@ -49,6 +54,14 @@ suspend fun main() {
     println("Owners: $owners")
     println("LLMUrl: $llmUrl")
     if (!File("./src/Logs").exists()) File("./src/Logs").mkdir()
+    if (!File("./src/Logs/stats.json").exists()) {
+        runBlocking {
+            File("./src/Logs/stats.json").createNewFile()
+            File("./src/Logs/stats.json").printWriter().use {
+                it.print("{}")
+            }
+        }
+    }
     if (File("./src/Blocklist.json").exists()) {
         blockList = Json.decodeFromString<JsonArray>(File("./src/Blocklist.json").readText())
     } else {
@@ -102,6 +115,77 @@ suspend fun main() {
             }
         }
     }
+    kord!!.createGlobalChatInputCommand(name = "tldr", description = "generate a summary of the chat")
+    kord!!.createGlobalChatInputCommand(name = "tldr_retry", description = "regenerate the latest summary")
+    kord!!.createGlobalChatInputCommand(name = "test", description = "test command")
+    kord!!.createGlobalChatInputCommand(name = "stats", description = "get statistics about commands")
+    kord!!.on<ChatInputCommandInteractionCreateEvent>(CoroutineScope(nonParallelDispatcher)) {
+        val response = interaction.deferPublicResponse()
+        val command = interaction.command
+        if (!allowDMs && interaction.channel.asChannel().type == ChannelType.DM) {
+            response.respond {
+                content = "DMs are disabled for this bot"
+            }
+            return@on
+        }
+        statsManager.addSlashCommandsUsage()
+        when(command.rootName) {
+            "test" -> {
+                response.respond {
+                    content = "Test output"
+                }
+            }
+            "tldr" -> {
+                val channel = interaction.channel.asChannel()
+                val author = interaction.user
+                if (blockList.contains<Any?>(Json.encodeToJsonElement(author.id.toString()))) {
+                    println("Blocked user ${author.username} tried to talk to the bot")
+                    response.respond {
+                        content = "You are blocked from using that"
+                    }
+                    return@on
+                }
+                try {
+                    val tldrResult =  TLDRCore.slashTLDR(channel, author)
+                    response.respond {
+                        content = tldrResult
+                    }
+                } catch (e: LLMAPIException) {
+                    println("LLM API access failed")
+                    response.respond {
+                        content = apiErrorMessage
+                    }
+                }
+            }
+            "tldr_retry" -> {
+                val channel = interaction.channel.asChannel()
+                val author = interaction.user
+                if (blockList.contains<Any?>(Json.encodeToJsonElement(author.id.toString()))) {
+                    println("Blocked user ${author.username} tried to talk to the bot")
+                    response.respond {
+                        content = "You are blocked from using that"
+                    }
+                    return@on
+                }
+                try {
+                    val tldrResult =  TLDRCore.slashRetry(channel, author)
+                    response.respond {
+                        content = tldrResult
+                    }
+                } catch (e: LLMAPIException) {
+                    println("LLM API access failed")
+                    response.respond {
+                        content = apiErrorMessage
+                    }
+                }
+            }
+            "stats" -> {
+                response.respond {
+                    content = statsManager.getStats()
+                }
+            }
+        }
+    }
     kord!!.on<MessageCreateEvent>(CoroutineScope(nonParallelDispatcher)) {
         if (message.channel.asChannel().type == ChannelType.DM && !allowDMs)
             return@on
@@ -127,8 +211,10 @@ suspend fun main() {
 //                }
 
                 "!tldr" -> {
+                    statsManager.addPrefixCommandUsage()
                     if (messageContent.size == 2) {
                         when (messageContent[1].lowercase()) {
+                            "stats" -> reply(message, statsManager.getStats())
                             "reset" -> TLDRCore.clearAllLogs(message)
                             "stop" -> commandManager.stop(message)
                             "retry" -> try {
@@ -161,6 +247,7 @@ suspend fun main() {
                 }
 
                 "!pldt" -> {
+                    statsManager.addPrefixCommandUsage()
                 if (messageContent.size == 2) {
                     when (messageContent[1].lowercase()) {
                         "reset" -> TLDRCore.clearAllLogs(message)
@@ -258,7 +345,9 @@ suspend fun main() {
             }
         }
     }
+    kord!!.shutdown()
     println("logged out")
+    exitProcess(0)
 }
 
 suspend fun checkPermissions(message: Message): Boolean {

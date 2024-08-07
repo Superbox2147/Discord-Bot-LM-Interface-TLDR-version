@@ -94,12 +94,19 @@ class LLMManager {
         return File(logPath).readText()
     }
 
-    suspend fun sendLLMRequest(input: String, user: String, message: Message): String {
+    suspend fun sendLLMRequest(input: String, user: String, message: Message?): String {
         return runBlocking {
             val typing = launch(Dispatchers.Default) {
-                while (true) {
-                    message.channel.type()
-                    delay(1000L)
+                if (message != null) {
+                    while (true) {
+                        message.channel.type()
+                        delay(1000L)
+                    }
+                } else {
+                    while (true) {
+                        print("")
+                        delay(1000L)
+                    }
                 }
             }
             val response = async {
@@ -122,7 +129,7 @@ class LLMManager {
                     }
                     add("\n\n\n")
                     add("$charName:")
-                    add("${message.author!!.username}:")
+                    add("$user:")
                 }
                 val llmRequest = buildJsonObject {
                     for (i in llmConfig) {
