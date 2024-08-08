@@ -45,7 +45,7 @@ class StatsManager {
     fun addPrefixCommandUsage() {
         val currentStats = Json.decodeFromString<JsonObject>(statsFile.readText())
         if (currentStats["prefix_commands"] != null) {
-            val prefixCommandUsages = (currentStats["slash_commands"]!!.jsonPrimitive.content.toIntOrNull() ?: 0) + 1
+            val prefixCommandUsages = (currentStats["prefix_commands"]!!.jsonPrimitive.content.toIntOrNull() ?: 0) + 1
             val jsonData = buildJsonObject {
                 put("prefix_commands", Json.encodeToJsonElement(prefixCommandUsages.toString()))
                 put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"]?.jsonPrimitive?.content ?: "0"))
