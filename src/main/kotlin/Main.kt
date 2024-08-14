@@ -323,7 +323,12 @@ suspend fun main() {
                             message.channel.createMessage("You are blocked from using that")
                             return@on
                         }
-                        TLDRCore.TLDR(message)
+                        try {
+                            TLDRCore.TLDR(message)
+                        } catch (e: LLMAPIException) {
+                            println("LLM API access failed")
+                            reply(message, apiErrorMessage)
+                        }
                     } else {
                         TLDRCore.saveMessage(message)
                     }
