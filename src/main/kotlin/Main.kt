@@ -313,6 +313,8 @@ suspend fun main() {
                 else -> {
                     if (message.referencedMessage?.author?.id == kord.selfId) {
                         TLDRCore.saveMessage(message)
+                    } else if (message.referencedMessage?.type == MessageType.ChatInputCommand) {
+                        TLDRCore.saveMessage(message)
                     } else if (message.mentionedUserIds.contains(kord.selfId)) {
                         if (ignoreNext) {
                             ignoreNext = false
