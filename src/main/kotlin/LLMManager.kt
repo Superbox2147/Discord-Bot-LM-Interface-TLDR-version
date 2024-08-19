@@ -8,6 +8,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.internal.concurrent.Task
 import java.io.*
+import java.lang.NullPointerException
 
 class LLMManager {
     suspend fun onCommand(message: Message, messageContents: List<String>) {
@@ -146,7 +147,11 @@ class LLMManager {
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) throw IOException("Unexpected code $response")
                     val outputJson = Json.decodeFromString<JsonObject>(response.body!!.string())
-                    return@async outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+                    return@async try {
+                        outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+                    } catch (e: NullPointerException) {
+                        outputJson.jsonObject["content"]!!.jsonPrimitive.content.trim()
+                    }
                 }
             }.await()
             typing.cancel()
