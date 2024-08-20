@@ -11,7 +11,7 @@ import java.io.*
 import java.lang.NullPointerException
 
 class LLMManager {
-    private val cleanupRegex = Regex("""\n.*:""")
+    private val cleanupRegex = Regex("""\n[^ \n]*:""")
     suspend fun onCommand(message: Message, messageContents: List<String>) {
         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
