@@ -11,6 +11,7 @@ import java.io.*
 import java.lang.NullPointerException
 
 class LLMManager {
+    private val cleanupRegex = Regex("""\n.*:""")
     suspend fun onCommand(message: Message, messageContents: List<String>) {
         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
@@ -148,9 +149,9 @@ class LLMManager {
                     if (!response.isSuccessful) throw IOException("Unexpected code $response")
                     val outputJson = Json.decodeFromString<JsonObject>(response.body!!.string())
                     return@async try {
-                        outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+                        outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim().split(cleanupRegex)[0]
                     } catch (e: NullPointerException) {
-                        outputJson.jsonObject["content"]!!.jsonPrimitive.content.trim()
+                        outputJson.jsonObject["content"]!!.jsonPrimitive.content.trim().split(cleanupRegex)[0]
                     }
                 }
             }.await()
