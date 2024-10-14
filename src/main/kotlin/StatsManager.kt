@@ -17,26 +17,28 @@ class StatsManager {
         val currentStats = Json.decodeFromString<JsonObject>(statsFile.readText())
         if (currentStats["slash_commands"] != null) {
             val slashCommandUsages = (currentStats["slash_commands"]!!.jsonPrimitive.content.toIntOrNull() ?: 0) + 1
-            val jsonData = buildJsonObject {
-                put("slash_commands", Json.encodeToJsonElement(slashCommandUsages.toString()))
-                put(
-                    "prefix_commands",
-                    Json.encodeToJsonElement(currentStats["prefix_commands"]?.jsonPrimitive?.content ?: "0")
-                )
-            }
+            val jsonData =
+                buildJsonObject {
+                    put("slash_commands", Json.encodeToJsonElement(slashCommandUsages.toString()))
+                    put(
+                        "prefix_commands",
+                        Json.encodeToJsonElement(currentStats["prefix_commands"]?.jsonPrimitive?.content ?: "0"),
+                    )
+                }
             statsFile.printWriter().use {
                 it.print(jsonData)
             }
             return
         }
         val slashCommandUsages = 1
-        val jsonData = buildJsonObject {
-            put("slash_commands", Json.encodeToJsonElement(slashCommandUsages.toString()))
-            put(
-                "prefix_commands",
-                Json.encodeToJsonElement(currentStats["prefix_commands"]?.jsonPrimitive?.content ?: "0")
-            )
-        }
+        val jsonData =
+            buildJsonObject {
+                put("slash_commands", Json.encodeToJsonElement(slashCommandUsages.toString()))
+                put(
+                    "prefix_commands",
+                    Json.encodeToJsonElement(currentStats["prefix_commands"]?.jsonPrimitive?.content ?: "0"),
+                )
+            }
         statsFile.printWriter().use {
             it.print(jsonData.toString())
         }
@@ -46,20 +48,22 @@ class StatsManager {
         val currentStats = Json.decodeFromString<JsonObject>(statsFile.readText())
         if (currentStats["prefix_commands"] != null) {
             val prefixCommandUsages = (currentStats["prefix_commands"]!!.jsonPrimitive.content.toIntOrNull() ?: 0) + 1
-            val jsonData = buildJsonObject {
-                put("prefix_commands", Json.encodeToJsonElement(prefixCommandUsages.toString()))
-                put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"]?.jsonPrimitive?.content ?: "0"))
-            }
+            val jsonData =
+                buildJsonObject {
+                    put("prefix_commands", Json.encodeToJsonElement(prefixCommandUsages.toString()))
+                    put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"]?.jsonPrimitive?.content ?: "0"))
+                }
             statsFile.printWriter().use {
                 it.print(jsonData.toString())
             }
             return
         }
         val prefixCommandUsages = 1
-        val jsonData = buildJsonObject {
-            put("prefix_commands", Json.encodeToJsonElement(prefixCommandUsages.toString()))
-            put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"]?.jsonPrimitive?.content ?: "0"))
-        }
+        val jsonData =
+            buildJsonObject {
+                put("prefix_commands", Json.encodeToJsonElement(prefixCommandUsages.toString()))
+                put("slash_commands", Json.encodeToJsonElement(currentStats["slash_commands"]?.jsonPrimitive?.content ?: "0"))
+            }
         statsFile.printWriter().use {
             it.print(jsonData)
         }

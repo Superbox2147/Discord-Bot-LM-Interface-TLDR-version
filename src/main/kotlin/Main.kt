@@ -5,11 +5,9 @@ import dev.kord.core.*
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.behavior.reply
 import dev.kord.core.entity.*
-import dev.kord.core.entity.interaction.GlobalChatInputCommandInteraction
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.message.*
 import dev.kord.gateway.*
-import java.io.*
 import io.github.cdimascio.dotenv.dotenv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +16,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import okhttp3.*
+import java.io.*
 import java.util.concurrent.*
 import kotlin.system.exitProcess
 
@@ -26,7 +25,16 @@ val botToken: String? = dotenv["TOKEN"]
 val owners = Json.decodeFromString<JsonArray>(dotenv["OWNERS"])
 val llmUrl: String? = dotenv["LLMURL"]
 var kord: Kord? = null
-val client = OkHttpClient.Builder().connectTimeout(1, TimeUnit.DAYS).writeTimeout(1, TimeUnit.DAYS).readTimeout(1, TimeUnit.DAYS).callTimeout(1,TimeUnit.DAYS).build()
+val client =
+    OkHttpClient
+        .Builder()
+        .connectTimeout(
+            1,
+            TimeUnit.DAYS,
+        ).writeTimeout(1, TimeUnit.DAYS)
+        .readTimeout(1, TimeUnit.DAYS)
+        .callTimeout(1, TimeUnit.DAYS)
+        .build()
 val llmConfig = Json.decodeFromString<JsonObject>(File("./src/config.json").readText())
 val prompt = File("./src/SystemPrompt.LLMD").readText() + "\n" + File("./src/Character/CharacterInfo.LLMD").readText()
 val charName = File("./src/Character/CharacterName.LLMD").readText()
@@ -36,7 +44,14 @@ val commandManager = CommandManager()
 val LLM = LLMManager()
 var ignoreNext = false
 val filter = FilterManager()
-val strictFiltering = try { dotenv["STRICT_FILTERING"].toBooleanStrictOrNull()!! } catch (e: NullPointerException) { throw Exception("NonBooleanStrictFilteringException") }
+val strictFiltering =
+    try {
+        dotenv["STRICT_FILTERING"].toBooleanStrictOrNull()!!
+    } catch (
+        e: NullPointerException,
+    ) {
+        throw Exception("NonBooleanStrictFilteringException")
+    }
 val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
 val TLDRCore = TLDRManager()
@@ -129,7 +144,7 @@ suspend fun main() {
             return@on
         }
         statsManager.addSlashCommandsUsage()
-        when(command.rootName) {
+        when (command.rootName) {
             "test" -> {
                 response.respond {
                     content = "Test output"
@@ -146,7 +161,7 @@ suspend fun main() {
                     return@on
                 }
                 try {
-                    val tldrResult =  TLDRCore.slashTLDR(channel, author)
+                    val tldrResult = TLDRCore.slashTLDR(channel, author)
                     response.respond {
                         content = tldrResult
                     }
@@ -168,7 +183,7 @@ suspend fun main() {
                     return@on
                 }
                 try {
-                    val tldrResult =  TLDRCore.slashRetry(channel, author)
+                    val tldrResult = TLDRCore.slashRetry(channel, author)
                     response.respond {
                         content = tldrResult
                     }
@@ -187,19 +202,22 @@ suspend fun main() {
         }
     }
     kord!!.on<MessageCreateEvent>(CoroutineScope(nonParallelDispatcher)) {
-        if (message.channel.asChannel().type == ChannelType.DM && !allowDMs)
+        if (message.channel.asChannel().type == ChannelType.DM && !allowDMs) {
             return@on
-        if (message.author?.id == kord.selfId)
+        }
+        if (message.author?.id == kord.selfId) {
             return@on
+        }
         val messageContent = message.content.split(" ")
-        if (messageContent.isEmpty())
+        if (messageContent.isEmpty()) {
             return@on
+        }
         try {
             when (messageContent[0].lowercase()) {
                 "!ping" -> commandManager.ping(message)
-                //"!debug" -> commandManager.debug(message)
-                //"!bonk" -> commandManager.bonk(message, messageContent)
-                //"!reset" -> commandManager.reset(message)
+                // "!debug" -> commandManager.debug(message)
+                // "!bonk" -> commandManager.bonk(message, messageContent)
+                // "!reset" -> commandManager.reset(message)
                 "!stop" -> commandManager.stop(message)
 //                "!continue" -> commandManager.continueCmd(message)
 //                "!echo" -> {
@@ -217,19 +235,21 @@ suspend fun main() {
                             "stats" -> reply(message, statsManager.getStats())
                             "reset" -> TLDRCore.clearAllLogs(message)
                             "stop" -> commandManager.stop(message)
-                            "retry" -> try {
-                                TLDRCore.regenerate(message)
-                            } catch (e: LLMAPIException) {
-                                println("LLM API access failed")
-                                reply(message, apiErrorMessage)
-                            }
+                            "retry" ->
+                                try {
+                                    TLDRCore.regenerate(message)
+                                } catch (e: LLMAPIException) {
+                                    println("LLM API access failed")
+                                    reply(message, apiErrorMessage)
+                                }
                             "relog" -> commandManager.relog(message)
-                            else -> try {
-                                TLDRCore.TLDR(message)
-                            } catch (e: LLMAPIException) {
-                                println("LLM API access failed")
-                                reply(message, apiErrorMessage)
-                            }
+                            else ->
+                                try {
+                                    TLDRCore.TLDR(message)
+                                } catch (e: LLMAPIException) {
+                                    println("LLM API access failed")
+                                    reply(message, apiErrorMessage)
+                                }
                         }
                     } else {
                         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
@@ -248,38 +268,40 @@ suspend fun main() {
 
                 "!pldt" -> {
                     statsManager.addPrefixCommandUsage()
-                if (messageContent.size == 2) {
-                    when (messageContent[1].lowercase()) {
-                        "reset" -> TLDRCore.clearAllLogs(message)
-                        "stop" -> commandManager.stop(message)
-                        "retry" -> try {
-                            TLDRCore.regenerate(message)
-                        } catch (e: LLMAPIException) {
-                            println("LLM API access failed")
-                            reply(message, apiErrorMessage)
+                    if (messageContent.size == 2) {
+                        when (messageContent[1].lowercase()) {
+                            "reset" -> TLDRCore.clearAllLogs(message)
+                            "stop" -> commandManager.stop(message)
+                            "retry" ->
+                                try {
+                                    TLDRCore.regenerate(message)
+                                } catch (e: LLMAPIException) {
+                                    println("LLM API access failed")
+                                    reply(message, apiErrorMessage)
+                                }
+                            "relog" -> commandManager.relog(message)
+                            else ->
+                                try {
+                                    TLDRCore.TLDR(message)
+                                } catch (e: LLMAPIException) {
+                                    println("LLM API access failed")
+                                    reply(message, apiErrorMessage)
+                                }
                         }
-                        "relog" -> commandManager.relog(message)
-                        else -> try {
+                    } else {
+                        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+                            println("Blocked user ${message.author!!.username} tried to talk to the bot")
+                            message.channel.createMessage("You are blocked from using that")
+                            return@on
+                        }
+                        try {
                             TLDRCore.TLDR(message)
                         } catch (e: LLMAPIException) {
                             println("LLM API access failed")
                             reply(message, apiErrorMessage)
                         }
                     }
-                } else {
-                    if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
-                        println("Blocked user ${message.author!!.username} tried to talk to the bot")
-                        message.channel.createMessage("You are blocked from using that")
-                        return@on
-                    }
-                    try {
-                        TLDRCore.TLDR(message)
-                    } catch (e: LLMAPIException) {
-                        println("LLM API access failed")
-                        reply(message, apiErrorMessage)
-                    }
                 }
-            }
 
                 "!blocklist" -> {
                     if (messageContent.size == 3) {
@@ -291,14 +313,18 @@ suspend fun main() {
                                 }
                             } else {
                                 message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
-                                println("${message.author?.username} tried to tamper with the blocklist, but they lack the permission to do so! Skill issue.")
+                                println(
+                                    "${message.author?.username} tried to tamper with the blocklist, but they lack the permission to do so! Skill issue.",
+                                )
                             }
                         } catch (e: NullPointerException) {
                             println("Caught NullPointerException in blocklist")
                             message.channel.createMessage("Checking permissions failed: NullPointerException")
                         }
                     } else {
-                        message.channel.createMessage("Command has an incorrect amount of parameters, expecting '!blocklist add/remove USER'")
+                        message.channel.createMessage(
+                            "Command has an incorrect amount of parameters, expecting '!blocklist add/remove USER'",
+                        )
                     }
                 }
 
@@ -338,8 +364,9 @@ suspend fun main() {
             }
         } catch (e: Exception) {
             for (i in e.stackTrace) println(i.toString())
-            println(e.toString())}
+            println(e.toString())
         }
+    }
     println("ready")
     while (loginAgain) {
         println("Logging in as ${kord!!.getSelf().username}")
@@ -365,7 +392,10 @@ suspend fun checkPermissions(message: Message): Boolean {
     return owners.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString())) || moderator
 }
 
-suspend fun reply(message: Message, input: String) {
+suspend fun reply(
+    message: Message,
+    input: String,
+) {
     message.reply {
         content = input
     }
@@ -373,15 +403,16 @@ suspend fun reply(message: Message, input: String) {
 
 fun getStatus(): Pair<PresenceStatus, String> {
     val rawStatus = dotenv["STATUS"] ?: "away"
-    val status = if (rawStatus.lowercase() == "online") {
-        PresenceStatus.Online
-    } else if (rawStatus.lowercase() == "away") {
-        PresenceStatus.Idle
-    } else if (rawStatus.lowercase() == "dnd") {
-        PresenceStatus.DoNotDisturb
-    } else {
-        PresenceStatus.Invisible
-    }
+    val status =
+        if (rawStatus.lowercase() == "online") {
+            PresenceStatus.Online
+        } else if (rawStatus.lowercase() == "away") {
+            PresenceStatus.Idle
+        } else if (rawStatus.lowercase() == "dnd") {
+            PresenceStatus.DoNotDisturb
+        } else {
+            PresenceStatus.Invisible
+        }
     val presence = dotenv["PRESENCE"] ?: "TLDR chat with !TLDR"
     return Pair(status, presence)
 }

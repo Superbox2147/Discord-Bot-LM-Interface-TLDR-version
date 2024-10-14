@@ -52,3 +52,5 @@ src/Character
 src/Character/CharacterInfo.LLMD
 src/Character/CharacterName.LLMD
 /src/Character
+src/SystemPrompt.LLMD
+/src/Character/

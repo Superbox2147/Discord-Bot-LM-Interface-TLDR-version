@@ -7,7 +7,7 @@ import java.io.File
 class FilterManager {
     private val filterLists = Json.decodeFromString<JsonArray>(dotenv["FILTERS"])
     private val filterListsEnabled = mutableMapOf<String, Boolean>()
-    private val regexPattern = Regex("""(^(?<=[\W])*\W+|\W*(?<=\W)*$)""") //RegEx pattern by Edelweiss
+    private val regexPattern = Regex("""(^(?<=[\W])*\W+|\W*(?<=\W)*$)""") // RegEx pattern by Edelweiss
 
     fun buildFilterMap() {
         for (i in filterLists) {
@@ -15,7 +15,10 @@ class FilterManager {
         }
     }
 
-    suspend fun toggleFilter(filter: String, message: Message) {
+    suspend fun toggleFilter(
+        filter: String,
+        message: Message,
+    ) {
         if (checkPermissions(message)) {
             if (filterListsEnabled.containsKey(filter)) {
                 filterListsEnabled[filter] = !filterListsEnabled[filter]!!
@@ -26,7 +29,7 @@ class FilterManager {
                         } else {
                             "disabled"
                         }
-                    }"
+                    }",
                 )
                 println("${message.author!!.username} toggled filter $filter")
             } else {
@@ -39,8 +42,8 @@ class FilterManager {
         }
     }
 
-    private fun loadFilters(): JsonArray {
-        return buildJsonArray{
+    private fun loadFilters(): JsonArray =
+        buildJsonArray {
             for (i in filterListsEnabled) {
                 if (i.value) {
                     for (word in Json.decodeFromString<JsonArray>(File("./src/Filters/${i.key}.json").readText())) {
@@ -49,19 +52,20 @@ class FilterManager {
                 }
             }
         }
-    }
 
     fun filter(unfiltered: String): String {
         val filters = loadFilters()
         val words = unfiltered.split(" ")
         val filtered = mutableListOf<String>()
         for (word in words) {
-            filtered.add(if (!filters.contains(Json.encodeToJsonElement(clean(word.lowercase())))) {
-                word
-            } else {
-                println("Filtered word \"$word\"")
-                "[Filtered]"
-            })
+            filtered.add(
+                if (!filters.contains(Json.encodeToJsonElement(clean(word.lowercase())))) {
+                    word
+                } else {
+                    println("Filtered word \"$word\"")
+                    "[Filtered]"
+                },
+            )
         }
         return filtered.joinToString(" ")
     }
@@ -73,12 +77,14 @@ class FilterManager {
         var wordIndex = 1
         for (word in words) {
             if (wordIndex == words.size) {
-                filtered.add(if (!filters.contains(Json.encodeToJsonElement(clean(word.lowercase())))) {
-                    word
-                } else {
-                    println("Strict filtered word or phrase \"$word\"")
-                    "[Filtered]"
-                })
+                filtered.add(
+                    if (!filters.contains(Json.encodeToJsonElement(clean(word.lowercase())))) {
+                        word
+                    } else {
+                        println("Strict filtered word or phrase \"$word\"")
+                        "[Filtered]"
+                    },
+                )
             } else {
                 val wordSubset = words.subList(wordIndex + 1, words.size)
                 var toCheck = clean(word.lowercase())
@@ -93,17 +99,20 @@ class FilterManager {
                             break
                         }
                     }
-                    filtered.add(if (needsFiltering) {
-                        println("Strict filtered word or phrase \"$word\"")
-                        "[Filtered]"
-                    } else {
-                        word
-                    })
+                    filtered.add(
+                        if (needsFiltering) {
+                            println("Strict filtered word or phrase \"$word\"")
+                            "[Filtered]"
+                        } else {
+                            word
+                        },
+                    )
                 }
                 wordIndex++
             }
         }
         return filtered.joinToString(" ")
     }
+
     fun clean(input: String) = input.replace(regexPattern, "")
 }

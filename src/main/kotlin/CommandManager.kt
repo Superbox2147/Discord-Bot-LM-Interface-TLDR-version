@@ -29,40 +29,53 @@ class CommandManager {
             message.channel.createMessage("The bot is shutting down. Please ping the host if you wish to restart it.")
             loginAgain = false
             kord!!.logout()
-        }  else {
-            message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
-            println("${message.author?.username} tried to stop the LLM, but they lack the permission to do so!\nThe UserID need to be in the `.env` file in the `OWNERS` variable for them to gain the right permissions. Skill issue.")
-        }
-    }
-
-    suspend fun reset(message: Message) = runBlocking {
-        if (checkPermissions(message)) {
-            if (File("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD").exists()) {
-                val newPath = Paths.get(
-                    "./src/Logs/Logs${message.channel.id}/CharacterLogs ${
-                        DateTimeFormatter.ofPattern("yyyy MM dd HH mm ss SSSSSS").withZone(ZoneOffset.UTC)
-                            .format(Instant.now())
-                    }.LLMD"
-                )
-                Files.move(Paths.get("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD"), newPath, StandardCopyOption.REPLACE_EXISTING)
-                File("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD").createNewFile()
-                File("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD").printWriter().use {
-                    it.println("$charName: $greeting")
-                }
-                message.channel.createMessage("Message log reset successfully, <@${message.author!!.id}>")
-                message.channel.createMessage(greeting)
-                println("${message.author!!.username} reset the chatlogs for channel ${message.channel.id}")
-                println("$charName: $greeting")
-            } else {
-                message.channel.createMessage("Error: log file has not been created yet, start a conversation to create a log file.")
-            }
         } else {
             message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
-            println("${message.author?.username} tried to reset the LLM, but they lack the permission to do so!\\nThe UserID need to be in the `.env` file in the `OWNERS` variable for them to gain the right permissions. Skill issue.")
+            println(
+                "${message.author?.username} tried to stop the LLM, but they lack the permission to do so!\nThe UserID need to be in the `.env` file in the `OWNERS` variable for them to gain the right permissions. Skill issue.",
+            )
         }
     }
 
-    suspend fun blocklistAdd(message: Message, uID: String) {
+    suspend fun reset(message: Message) =
+        runBlocking {
+            if (checkPermissions(message)) {
+                if (File("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD").exists()) {
+                    val newPath =
+                        Paths.get(
+                            "./src/Logs/Logs${message.channel.id}/CharacterLogs ${
+                                DateTimeFormatter.ofPattern("yyyy MM dd HH mm ss SSSSSS").withZone(ZoneOffset.UTC)
+                                    .format(Instant.now())
+                            }.LLMD",
+                        )
+                    Files.move(
+                        Paths.get("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD"),
+                        newPath,
+                        StandardCopyOption.REPLACE_EXISTING,
+                    )
+                    File("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD").createNewFile()
+                    File("./src/Logs/Logs${message.channel.id}/CharacterLogs.LLMD").printWriter().use {
+                        it.println("$charName: $greeting")
+                    }
+                    message.channel.createMessage("Message log reset successfully, <@${message.author!!.id}>")
+                    message.channel.createMessage(greeting)
+                    println("${message.author!!.username} reset the chatlogs for channel ${message.channel.id}")
+                    println("$charName: $greeting")
+                } else {
+                    message.channel.createMessage("Error: log file has not been created yet, start a conversation to create a log file.")
+                }
+            } else {
+                message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
+                println(
+                    "${message.author?.username} tried to reset the LLM, but they lack the permission to do so!\\nThe UserID need to be in the `.env` file in the `OWNERS` variable for them to gain the right permissions. Skill issue.",
+                )
+            }
+        }
+
+    suspend fun blocklistAdd(
+        message: Message,
+        uID: String,
+    ) {
         val userToBlock = uID.removePrefix("<@").removeSuffix(">")
         if (userToBlock.toDoubleOrNull() == null) {
             message.channel.createMessage("<@${message.author!!.id}> Invalid uID provided")
@@ -83,7 +96,10 @@ class CommandManager {
         }
     }
 
-    suspend fun blocklistRemove(message: Message, uID: String) {
+    suspend fun blocklistRemove(
+        message: Message,
+        uID: String,
+    ) {
         val userToRemove = uID.removePrefix("<@").removeSuffix(">")
         if (userToRemove.toDoubleOrNull() == null) {
             message.channel.createMessage("<@${message.author!!.id}> Invalid uID provided")
@@ -104,17 +120,25 @@ class CommandManager {
         }
     }
 
-    suspend fun bonk(message: Message, messageContents: List<String>) {
+    suspend fun bonk(
+        message: Message,
+        messageContents: List<String>,
+    ) {
         if (messageContents.size == 1) {
             message.channel.createMessage("${message.author?.username} bonked the air! <:SCHIZO:1215082198164701294>")
-        } else if (message.author?.username == messageContents[1] || message.author?.id.toString() == messageContents[1].removePrefix("<@").removeSuffix(">")) {
+        } else if (message.author?.username == messageContents[1] ||
+            message.author?.id.toString() == messageContents[1].removePrefix("<@").removeSuffix(">")
+        ) {
             message.channel.createMessage("${message.author?.username} bonked themself!")
         } else {
             message.channel.createMessage("${message.author?.username} bonked ${messageContents[1]}")
         }
     }
 
-    suspend fun echo(message: Message, messageContents: List<String>) {
+    suspend fun echo(
+        message: Message,
+        messageContents: List<String>,
+    ) {
         val userMessage = messageContents.toMutableList().drop(1).joinToString(" ")
         println("${message.author?.username}: $userMessage")
         reply(message, userMessage)
@@ -145,10 +169,11 @@ class CommandManager {
     }
 
     suspend fun relog(message: Message) {
-        if (checkPermissions(message)){
-            println("The bot was commanded to relog by ${message.author!!.username}")
-            kord!!.logout()
-        } else {
+        if (checkPermissions(message))
+            {
+                println("The bot was commanded to relog by ${message.author!!.username}")
+                kord!!.logout()
+            } else {
             println("${message.author!!.username} tried to make the bot relogin, but they lack the permissions to do so")
             reply(message, "Sorry, but you do not have the correct permissions to do so")
         }
