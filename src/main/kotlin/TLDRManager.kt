@@ -273,7 +273,11 @@ class TLDRManager {
                     }
                 }
             }
-        val botResponse = processResponse(rawResponseSecond)
+        val tldrSecond = processResponse(rawResponseSecond)
+        val botResponse =
+            "TLDR:\n" +
+                "$tldrFirst\n" +
+                "in summary:\n$tldrSecond"
         println("$charName: $botResponse")
         reply(message, botResponse)
     }
@@ -524,7 +528,11 @@ class TLDRManager {
                     }
                 }
             }
-        val botResponse = processResponse(rawResponseSecond)
+        val tldrSecond = processResponse(rawResponseSecond)
+        val botResponse =
+            "TLDR:\n" +
+                "$tldrFirst\n" +
+                "in summary:\n$tldrSecond"
         println("$charName: $botResponse")
         return botResponse
     }
