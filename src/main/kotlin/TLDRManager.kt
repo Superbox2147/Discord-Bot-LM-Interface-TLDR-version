@@ -565,10 +565,13 @@ class TLDRManager {
                     chatLog.drop(chatLog.length - ctxTruncation)
                 }
             }
-        }\n###prompt:\n$prompt\n$TLDRPrompt\n###tldr:\n$tldr\n###summary of the tldr:"
+        }\n###prompt:\n$prompt\n$TLDRPrompt\n###tldr:\n$tldr\n###additional prompt:\n" +
+            "$extraTLDRPrompt\n###summary of the tldr:"
 
     private fun buildRetryInputSecond(
         firstInput: String,
         tldr: String,
-    ): String = "$firstInput\n###additional prompt:\n$extraTLDRPrompt\n###summary of the tldr:"
+    ): String =
+        "$firstInput\n###tldr:\n" +
+            "$tldr\n###additional prompt:\n$extraTLDRPrompt\n###summary of the tldr:"
 }
