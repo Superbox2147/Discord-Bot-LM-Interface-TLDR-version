@@ -23,6 +23,7 @@ class TLDRManager {
     private val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
     private val doStreak = maxStreak >= 0
     private val prompt = File("./src/SystemPrompt.LLMD").readText()
+    private val extraTLDRPrompt = File("./src/Character/SubPrompt.LLMD").readText()
 
     fun saveMessage(message: Message) {
         if (maxMessageLogLength < 5) {
@@ -569,5 +570,5 @@ class TLDRManager {
     private fun buildRetryInputSecond(
         firstInput: String,
         tldr: String,
-    ): String = "$firstInput\n###summary of the tldr:"
+    ): String = "$firstInput\n###additional prompt:\n$extraTLDRPrompt\n###summary of the tldr:"
 }
