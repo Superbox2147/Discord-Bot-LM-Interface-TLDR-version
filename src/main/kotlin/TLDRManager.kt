@@ -154,6 +154,7 @@ class TLDRManager {
                         }
                     }
                 previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                previousTLDRLLMPromptsChat["${channel.id}"] = messagesLog
                 lastTLDRs["${channel.id}"] = currentTime
                 val tldrFirst = processResponse(rawResponseFirst)
                 val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
@@ -247,6 +248,7 @@ class TLDRManager {
                         }
                     }
                 previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                previousTLDRLLMPromptsChat["${channel.id}"] = messagesLog
                 lastTLDRs["${channel.id}"] = currentTime
                 val tldrFirst = processResponse(rawResponseFirst)
                 val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
@@ -359,6 +361,7 @@ class TLDRManager {
                 }
             }
         if (!retry) {
+            previousTLDRLLMPrompts["${channel.id}"] = buildLLMInputFirst(messages.joinToString("\n"))
             previousTLDRLLMPromptsChat["${channel.id}"] = messages
             lastTLDRs["${channel.id}"] = currentTime!!
         }
@@ -737,6 +740,7 @@ class TLDRManager {
                         }
                     }
                 previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                previousTLDRLLMPromptsChat["${channel.id}"] = messagesLog
                 lastTLDRs["${channel.id}"] = currentTime
                 val tldrFirst = processResponse(rawResponseFirst)
                 val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
@@ -830,6 +834,7 @@ class TLDRManager {
                         }
                     }
                 previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                previousTLDRLLMPromptsChat["${channel.id}"] = messagesLog
                 lastTLDRs["${channel.id}"] = currentTime
                 val tldrFirst = processResponse(rawResponseFirst)
                 val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
