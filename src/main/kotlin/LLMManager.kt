@@ -10,7 +10,13 @@ import java.io.*
 import java.lang.NullPointerException
 
 class LLMManager {
+    private val llmUrl: String? = dotenv["LLMURL"]
+    private val llmUrlChat = dotenv["LLMURL_CHAT"]
     private val cleanupRegex = Regex("""\n[^ \n]*:""")
+    private val apiToken = dotenv["API_TOKEN"]
+    private val apiTokenChat = dotenv["API_TOKEN_CHAT"]
+    private val modelName = dotenv["API_MODEL_NAME"]
+    private val modelNameChat = dotenv["API_MODEL_NAME_CHAT"]
 
     suspend fun onCommand(
         message: Message,
@@ -136,6 +142,107 @@ class LLMManager {
         return File(logPath).readText()
     }
 
+    suspend fun sendChatCompletionsRequest(
+        input: JsonArray,
+        user: String,
+        message: Message?,
+    ): String {
+        return runBlocking {
+            val typing =
+                launch(Dispatchers.Default) {
+                    if (message != null) {
+                        while (true) {
+                            message.channel.type()
+                            delay(1000L)
+                        }
+                    } else {
+                        while (true) {
+                            print("")
+                            delay(1000L)
+                        }
+                    }
+                }
+            val response =
+                async {
+                    val userStop = Json.decodeFromString<JsonArray>(File("./src/Stop.json").readText())
+                    val usernames =
+                        Json.decodeFromString<JsonArray>(File("./src/Usernames.json").readText()).toMutableList()
+                    if (!usernames.contains<Any?>(Json.encodeToJsonElement("$user:"))) {
+                        println("added $user: as a stop token, because $usernames did not contain it")
+                        usernames.add(Json.encodeToJsonElement("$user:"))
+                        File("src/Usernames.json").printWriter().use {
+                            it.print(Json.encodeToString(usernames).trim())
+                        }
+                    }
+                    val stop =
+                        buildJsonArray {
+                            for (i in userStop) {
+                                add(i.jsonPrimitive.content)
+                            }
+                            for (i in usernames) {
+                                add(i.jsonPrimitive.content)
+                            }
+                            add("\n\n\n")
+                            add("$charName:")
+                            add("$user:")
+                            add("###")
+                        }
+                    val llmRequest =
+                        buildJsonObject {
+                            if (modelNameChat != null && modelNameChat != "") {
+                                put("model", modelNameChat)
+                            }
+                            for (i in llmConfig) {
+                                put(i.key, i.value)
+                            }
+                            put(
+                                "messages",
+                                input,
+                            )
+                            put("stop", stop)
+                        }
+                    println("\n$llmRequest\n")
+                    val requestBody = llmRequest.toString().toRequestBody()
+                    val request =
+                        if (apiTokenChat != null && apiTokenChat == "") {
+                            Request
+                                .Builder()
+                                .url(llmUrlChat!!)
+                                .header("Content-Type", "application/json")
+                                .header("Authorization", apiTokenChat)
+                                .post(requestBody)
+                                .build()
+                        } else {
+                            Request
+                                .Builder()
+                                .url(llmUrlChat!!)
+                                .header("Content-Type", "application/json")
+                                .post(requestBody)
+                                .build()
+                        }
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            println(response.message)
+                            throw IOException("Unexpected code $response")
+                        }
+                        val outputJson = Json.decodeFromString<JsonObject>(response.body!!.string())
+                        return@async try {
+                            outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["message"]!!.jsonPrimitive.content.trim().split(
+                                cleanupRegex,
+                            )[0]
+                        } catch (e: NullPointerException) {
+                            outputJson.jsonObject["message"]!!
+                                .jsonPrimitive.content
+                                .trim()
+                                .split(cleanupRegex)[0]
+                        }
+                    }
+                }.await()
+            typing.cancel()
+            return@runBlocking response
+        }
+    }
+
     suspend fun sendLLMRequest(
         input: String,
         user: String,
@@ -183,6 +290,9 @@ class LLMManager {
                         }
                     val llmRequest =
                         buildJsonObject {
+                            if (modelName != null && modelName != "") {
+                                put("model", modelName)
+                            }
                             for (i in llmConfig) {
                                 put(i.key, i.value)
                             }
@@ -193,12 +303,22 @@ class LLMManager {
                     println("\n$llmRequest\n")
                     val requestBody = llmRequest.toString().toRequestBody()
                     val request =
-                        Request
-                            .Builder()
-                            .url(llmUrl!!)
-                            .header("Content-Type", "application/json")
-                            .post(requestBody)
-                            .build()
+                        if (apiToken != null && apiToken == "") {
+                            Request
+                                .Builder()
+                                .url(llmUrl!!)
+                                .header("Content-Type", "application/json")
+                                .header("Authorization", apiToken)
+                                .post(requestBody)
+                                .build()
+                        } else {
+                            Request
+                                .Builder()
+                                .url(llmUrl!!)
+                                .header("Content-Type", "application/json")
+                                .post(requestBody)
+                                .build()
+                        }
                     client.newCall(request).execute().use { response ->
                         if (!response.isSuccessful) throw IOException("Unexpected code $response")
                         val outputJson = Json.decodeFromString<JsonObject>(response.body!!.string())

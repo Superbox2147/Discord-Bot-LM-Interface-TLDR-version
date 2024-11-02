@@ -23,7 +23,6 @@ import kotlin.system.exitProcess
 val dotenv = dotenv()
 val botToken: String? = dotenv["TOKEN"]
 val owners = Json.decodeFromString<JsonArray>(dotenv["OWNERS"])
-val llmUrl: String? = dotenv["LLMURL"]
 var kord: Kord? = null
 val client =
     OkHttpClient
@@ -64,10 +63,8 @@ const val botVersion = "Discord bot LMI by Superbox\nV1.1.0 (TLDR)\n"
 suspend fun main() {
     println("Starting $botVersion")
     if (dotenv["TRUNCATION_LENGTH"].toIntOrNull() == null) throw Exception("InvalidTruncationLengthException")
-    if (llmUrl == null || llmUrl == "") throw Exception("NoLLLMURLException")
     if (owners.isEmpty()) throw Exception("NoOwnersException")
     println("Owners: $owners")
-    println("LLMUrl: $llmUrl")
     if (!File("./src/Logs").exists()) File("./src/Logs").mkdir()
     if (!File("./src/Logs/stats.json").exists()) {
         runBlocking {

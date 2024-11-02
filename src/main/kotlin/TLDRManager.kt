@@ -1,8 +1,9 @@
 package org.bot
 
+import dev.kord.core.behavior.channel.MessageChannelBehavior
 import dev.kord.core.entity.Message
 import dev.kord.core.entity.User
-import dev.kord.core.entity.channel.Channel
+import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import java.io.File
@@ -24,6 +25,8 @@ class TLDRManager {
     private val doStreak = maxStreak >= 0
     private val prompt = File("./src/SystemPrompt.LLMD").readText()
     private val extraTLDRPrompt = File("./src/Character/SubPrompt.LLMD").readText()
+    private val preferChatAPI = dotenv["API_PREFERENCE"]?.lowercase() == "chat"
+    private val previousTLDRLLMPromptsChat = mutableMapOf<String, List<String>>()
 
     fun saveMessage(message: Message) {
         if (maxMessageLogLength < 5) {
@@ -112,12 +115,219 @@ class TLDRManager {
         }
         val author = message.author
         val channel = message.channel
-        val chatLog = messagesLog.joinToString("\n")
-        val inputToLLMFirst = buildLLMInputFirst(chatLog)
+        try {
+            if (!preferChatAPI) {
+                val chatLog = messagesLog.joinToString("\n")
+                val inputToLLMFirst = buildLLMInputFirst(chatLog)
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
+                        firstResponse
+                    } else {
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
+                    }
+                previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                lastTLDRs["${channel.id}"] = currentTime
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                clearMessageLogs(channel.id.toString())
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                reply(message, botResponse)
+            } else {
+                val botResponse = requestChatMode(messagesLog, author, channel, message, currentTime, false)
+                println("$charName: $botResponse")
+                reply(message, botResponse)
+            }
+        } catch (e: LLMAPIException) {
+            if (!preferChatAPI) {
+                val botResponse = requestChatMode(messagesLog, author, channel, message, currentTime, false)
+                println("$charName: $botResponse")
+                reply(message, botResponse)
+            } else {
+                val chatLog = messagesLog.joinToString("\n")
+                val inputToLLMFirst = buildLLMInputFirst(chatLog)
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
+                        firstResponse
+                    } else {
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
+                    }
+                previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                lastTLDRs["${channel.id}"] = currentTime
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                clearMessageLogs(channel.id.toString())
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                reply(message, botResponse)
+            }
+        }
+    }
+
+    private fun messageListToMessageArray(messages: List<String>): JsonArray =
+        buildJsonArray {
+            val builder = this
+            messages.forEach {
+                builder.add(
+                    buildJsonObject {
+                        put("role", "user")
+                        put("content", it)
+                    },
+                )
+            }
+            builder.add(
+                buildJsonObject {
+                    put("role", "system")
+                    put("content", TLDRPrompt)
+                },
+            )
+        }
+
+    private suspend fun requestChatMode(
+        messages: List<String>,
+        author: User?,
+        channel: MessageChannelBehavior,
+        message: Message?,
+        currentTime: Long?,
+        retry: Boolean,
+    ): String {
+        val chatLogFirst = messageListToMessageArray(messages)
         val firstResponse =
             try {
-                LLM.sendLLMRequest(
-                    inputToLLMFirst,
+                LLM.sendChatCompletionsRequest(
+                    chatLogFirst,
                     author?.username ?: "",
                     message,
                 )
@@ -133,8 +343,8 @@ class TLDRManager {
                 } else {
                     val secondResponse =
                         try {
-                            LLM.sendLLMRequest(
-                                inputToLLMFirst,
+                            LLM.sendChatCompletionsRequest(
+                                chatLogFirst,
                                 author?.username ?: "",
                                 message,
                             )
@@ -148,14 +358,33 @@ class TLDRManager {
                     }
                 }
             }
-        previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
-        lastTLDRs["${channel.id}"] = currentTime
+        if (!retry) {
+            previousTLDRLLMPromptsChat["${channel.id}"] = messages
+            lastTLDRs["${channel.id}"] = currentTime!!
+        }
         val tldrFirst = processResponse(rawResponseFirst)
-        val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
+        val chatLogSecond =
+            buildJsonArray {
+                chatLogFirst.forEach {
+                    add(it)
+                }
+                add(
+                    buildJsonObject {
+                        put("role", "assistant")
+                        put("content", "TLDR: $tldrFirst")
+                    },
+                )
+                add(
+                    buildJsonObject {
+                        put("role", "system")
+                        put("content", extraTLDRPrompt)
+                    },
+                )
+            }
         val secondResponse =
             try {
-                LLM.sendLLMRequest(
-                    inputToLLMSecond,
+                LLM.sendChatCompletionsRequest(
+                    chatLogSecond,
                     author?.username ?: "",
                     message,
                 )
@@ -171,8 +400,8 @@ class TLDRManager {
                 } else {
                     val secondInternalResponse =
                         try {
-                            LLM.sendLLMRequest(
-                                inputToLLMSecond,
+                            LLM.sendChatCompletionsRequest(
+                                chatLogSecond,
                                 author?.username ?: "",
                                 message,
                             )
@@ -192,8 +421,7 @@ class TLDRManager {
             "TLDR:\n" +
                 "$tldrFirst\n" +
                 "in summary:\n$tldrSecond"
-        println("$charName: $botResponse")
-        reply(message, botResponse)
+        return botResponse
     }
 
     suspend fun regenerate(message: Message) {
@@ -203,84 +431,189 @@ class TLDRManager {
             return
         }
         val author = message.author
-        val inputToLLMFirst = previousTLDRLLMPrompts["${message.channel.id}"]!!
-        val firstResponse =
-            try {
-                LLM.sendLLMRequest(
-                    inputToLLMFirst,
-                    author?.username ?: "",
-                    message,
-                )
-            } catch (e: IOException) {
-                throw LLMAPIException()
-            }
-        val rawResponseFirst =
-            if (targetMinimumLength <= 0) {
-                firstResponse
-            } else {
-                if (firstResponse.length >= targetMinimumLength) {
-                    firstResponse
-                } else {
-                    val secondResponse =
-                        try {
-                            LLM.sendLLMRequest(
-                                inputToLLMFirst,
-                                author?.username ?: "",
-                                message,
-                            )
-                        } catch (e: IOException) {
-                            throw LLMAPIException()
-                        }
-                    if (secondResponse.length > firstResponse.length) {
-                        secondResponse
-                    } else {
+        try {
+            if (!preferChatAPI) {
+                val inputToLLMFirst = previousTLDRLLMPrompts["${message.channel.id}"]!!
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
                         firstResponse
-                    }
-                }
-            }
-        val tldrFirst = processResponse(rawResponseFirst)
-        val inputToLLMSecond = buildRetryInputSecond(inputToLLMFirst, tldrFirst)
-        val secondResponse =
-            try {
-                LLM.sendLLMRequest(
-                    inputToLLMSecond,
-                    author?.username ?: "",
-                    message,
-                )
-            } catch (e: IOException) {
-                throw LLMAPIException()
-            }
-        val rawResponseSecond =
-            if (targetMinimumLength <= 0) {
-                secondResponse
-            } else {
-                if (secondResponse.length >= targetMinimumLength) {
-                    secondResponse
-                } else {
-                    val secondInternalResponse =
-                        try {
-                            LLM.sendLLMRequest(
-                                inputToLLMSecond,
-                                author?.username ?: "",
-                                message,
-                            )
-                        } catch (e: IOException) {
-                            throw LLMAPIException()
-                        }
-                    if (secondInternalResponse.length > secondResponse.length) {
-                        secondInternalResponse
                     } else {
-                        secondResponse
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
                     }
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildRetryInputSecond(inputToLLMFirst, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                reply(message, botResponse)
+            } else {
+                val messages = previousTLDRLLMPromptsChat["${message.channel.id}"]
+                if (messages == null) {
+                    reply(message, "No previous TLDR on channel")
+                    return
                 }
+                val channel = message.channel
+                val botResponse = requestChatMode(messages, author, channel, message, null, true)
+                println("$charName: $botResponse")
+                reply(message, botResponse)
             }
-        val tldrSecond = processResponse(rawResponseSecond)
-        val botResponse =
-            "TLDR:\n" +
-                "$tldrFirst\n" +
-                "in summary:\n$tldrSecond"
-        println("$charName: $botResponse")
-        reply(message, botResponse)
+        } catch (e: LLMAPIException) {
+            if (!preferChatAPI) {
+                val messages = previousTLDRLLMPromptsChat["${message.channel.id}"]
+                if (messages == null) {
+                    reply(message, "No previous TLDR on channel")
+                    return
+                }
+                val channel = message.channel
+                val botResponse = requestChatMode(messages, author, channel, message, null, true)
+                println("$charName: $botResponse")
+                reply(message, botResponse)
+            } else {
+                val inputToLLMFirst = previousTLDRLLMPrompts["${message.channel.id}"]!!
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
+                        firstResponse
+                    } else {
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
+                    }
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildRetryInputSecond(inputToLLMFirst, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author?.username ?: "",
+                            message,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author?.username ?: "",
+                                        message,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                reply(message, botResponse)
+            }
+        }
     }
 
     private fun processResponse(input: String): String {
@@ -337,7 +670,7 @@ class TLDRManager {
     ) = (lastTLDR + TLDRCooldown) * 60
 
     suspend fun slashTLDR(
-        channel: Channel,
+        channel: MessageChannelBehavior,
         author: User,
     ): String {
         println("${author.username} requested a TLDR")
@@ -365,92 +698,189 @@ class TLDRManager {
                 return "On cooldown, come back approximately <t:${getTLDRCooldownTimestamp(TLDRCooldown, lastTLDR)}:R>"
             }
         }
-        val chatLog = messagesLog.joinToString("\n")
-        val inputToLLMFirst = buildLLMInputFirst(chatLog)
-        val firstResponse =
-            try {
-                LLM.sendLLMRequest(
-                    inputToLLMFirst,
-                    author.username,
-                    null,
-                )
-            } catch (e: IOException) {
-                throw LLMAPIException()
-            }
-        val rawResponseFirst =
-            if (targetMinimumLength <= 0) {
-                firstResponse
-            } else {
-                if (firstResponse.length >= targetMinimumLength) {
-                    firstResponse
-                } else {
-                    val secondResponse =
-                        try {
-                            LLM.sendLLMRequest(
-                                inputToLLMFirst,
-                                author.username,
-                                null,
-                            )
-                        } catch (e: IOException) {
-                            throw LLMAPIException()
-                        }
-                    if (secondResponse.length > firstResponse.length) {
-                        secondResponse
-                    } else {
+        try {
+            if (!preferChatAPI) {
+                val chatLog = messagesLog.joinToString("\n")
+                val inputToLLMFirst = buildLLMInputFirst(chatLog)
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
                         firstResponse
-                    }
-                }
-            }
-        previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
-        lastTLDRs["${channel.id}"] = currentTime
-        val tldrFirst = processResponse(rawResponseFirst)
-        val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
-        val secondResponse =
-            try {
-                LLM.sendLLMRequest(
-                    inputToLLMSecond,
-                    author.username,
-                    null,
-                )
-            } catch (e: IOException) {
-                throw LLMAPIException()
-            }
-        val rawResponseSecond =
-            if (targetMinimumLength <= 0) {
-                secondResponse
-            } else {
-                if (secondResponse.length >= targetMinimumLength) {
-                    secondResponse
-                } else {
-                    val secondInternalResponse =
-                        try {
-                            LLM.sendLLMRequest(
-                                inputToLLMSecond,
-                                author.username,
-                                null,
-                            )
-                        } catch (e: IOException) {
-                            throw LLMAPIException()
-                        }
-                    if (secondInternalResponse.length > secondResponse.length) {
-                        secondInternalResponse
                     } else {
-                        secondResponse
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
                     }
-                }
+                previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                lastTLDRs["${channel.id}"] = currentTime
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                clearMessageLogs(channel.id.toString())
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                return botResponse
+            } else {
+                val botResponse = requestChatMode(messagesLog, author, channel, null, currentTime, false)
+                println("$charName: $botResponse")
+                return botResponse
             }
-        clearMessageLogs(channel.id.toString())
-        val tldrSecond = processResponse(rawResponseSecond)
-        val botResponse =
-            "TLDR:\n" +
-                "$tldrFirst\n" +
-                "in summary:\n$tldrSecond"
-        println("$charName: $botResponse")
-        return botResponse
+        } catch (e: LLMAPIException) {
+            if (!preferChatAPI) {
+                val botResponse = requestChatMode(messagesLog, author, channel, null, currentTime, false)
+                println("$charName: $botResponse")
+                return botResponse
+            } else {
+                val chatLog = messagesLog.joinToString("\n")
+                val inputToLLMFirst = buildLLMInputFirst(chatLog)
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
+                        firstResponse
+                    } else {
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
+                    }
+                previousTLDRLLMPrompts["${channel.id}"] = inputToLLMFirst
+                lastTLDRs["${channel.id}"] = currentTime
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildLLMInputSecond(chatLog, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                clearMessageLogs(channel.id.toString())
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                return botResponse
+            }
+        }
     }
 
     suspend fun slashRetry(
-        channel: Channel,
+        channel: MessageChannelBehavior,
         author: User,
     ): String {
         println("${author.username} requested a regeneration")
@@ -458,84 +888,179 @@ class TLDRManager {
             return "No previous TLDR on channel"
         }
 
-        val inputToLLMFirst = previousTLDRLLMPrompts["${channel.id}"]!!
-        val firstResponse =
-            try {
-                LLM.sendLLMRequest(
-                    inputToLLMFirst,
-                    author.username,
-                    null,
-                )
-            } catch (e: IOException) {
-                throw LLMAPIException()
-            }
-        val rawResponseFirst =
-            if (targetMinimumLength <= 0) {
-                firstResponse
-            } else {
-                if (firstResponse.length >= targetMinimumLength) {
-                    firstResponse
-                } else {
-                    val secondResponse =
-                        try {
-                            LLM.sendLLMRequest(
-                                inputToLLMFirst,
-                                author.username,
-                                null,
-                            )
-                        } catch (e: IOException) {
-                            throw LLMAPIException()
-                        }
-                    if (secondResponse.length > firstResponse.length) {
-                        secondResponse
-                    } else {
+        try {
+            if (!preferChatAPI) {
+                val inputToLLMFirst = previousTLDRLLMPrompts["${channel.id}"]!!
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
                         firstResponse
-                    }
-                }
-            }
-        val tldrFirst = processResponse(rawResponseFirst)
-        val inputToLLMSecond = buildRetryInputSecond(inputToLLMFirst, tldrFirst)
-        val secondResponse =
-            try {
-                LLM.sendLLMRequest(
-                    inputToLLMSecond,
-                    author.username,
-                    null,
-                )
-            } catch (e: IOException) {
-                throw LLMAPIException()
-            }
-        val rawResponseSecond =
-            if (targetMinimumLength <= 0) {
-                secondResponse
-            } else {
-                if (secondResponse.length >= targetMinimumLength) {
-                    secondResponse
-                } else {
-                    val secondInternalResponse =
-                        try {
-                            LLM.sendLLMRequest(
-                                inputToLLMSecond,
-                                author.username,
-                                null,
-                            )
-                        } catch (e: IOException) {
-                            throw LLMAPIException()
-                        }
-                    if (secondInternalResponse.length > secondResponse.length) {
-                        secondInternalResponse
                     } else {
-                        secondResponse
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
                     }
-                }
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildRetryInputSecond(inputToLLMFirst, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                return botResponse
+            } else {
+                val messages = previousTLDRLLMPromptsChat["${channel.id}"] ?: return "No previous TLDR on channel"
+                val botResponse = requestChatMode(messages, author, channel, null, null, true)
+                println("$charName: $botResponse")
+                return botResponse
             }
-        val tldrSecond = processResponse(rawResponseSecond)
-        val botResponse =
-            "TLDR:\n" +
-                "$tldrFirst\n" +
-                "in summary:\n$tldrSecond"
-        println("$charName: $botResponse")
-        return botResponse
+        } catch (e: LLMAPIException) {
+            if (!preferChatAPI) {
+                val messages = previousTLDRLLMPromptsChat["${channel.id}"] ?: return "No previous TLDR on channel"
+                val botResponse = requestChatMode(messages, author, channel, null, null, true)
+                println("$charName: $botResponse")
+                return botResponse
+            } else {
+                val inputToLLMFirst = previousTLDRLLMPrompts["${channel.id}"]!!
+                val firstResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMFirst,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseFirst =
+                    if (targetMinimumLength <= 0) {
+                        firstResponse
+                    } else {
+                        if (firstResponse.length >= targetMinimumLength) {
+                            firstResponse
+                        } else {
+                            val secondResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMFirst,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondResponse.length > firstResponse.length) {
+                                secondResponse
+                            } else {
+                                firstResponse
+                            }
+                        }
+                    }
+                val tldrFirst = processResponse(rawResponseFirst)
+                val inputToLLMSecond = buildRetryInputSecond(inputToLLMFirst, tldrFirst)
+                val secondResponse =
+                    try {
+                        LLM.sendLLMRequest(
+                            inputToLLMSecond,
+                            author.username,
+                            null,
+                        )
+                    } catch (e: IOException) {
+                        throw LLMAPIException()
+                    }
+                val rawResponseSecond =
+                    if (targetMinimumLength <= 0) {
+                        secondResponse
+                    } else {
+                        if (secondResponse.length >= targetMinimumLength) {
+                            secondResponse
+                        } else {
+                            val secondInternalResponse =
+                                try {
+                                    LLM.sendLLMRequest(
+                                        inputToLLMSecond,
+                                        author.username,
+                                        null,
+                                    )
+                                } catch (e: IOException) {
+                                    throw LLMAPIException()
+                                }
+                            if (secondInternalResponse.length > secondResponse.length) {
+                                secondInternalResponse
+                            } else {
+                                secondResponse
+                            }
+                        }
+                    }
+                val tldrSecond = processResponse(rawResponseSecond)
+                val botResponse =
+                    "TLDR:\n" +
+                        "$tldrFirst\n" +
+                        "in summary:\n$tldrSecond"
+                println("$charName: $botResponse")
+                return botResponse
+            }
+        }
     }
 
     private fun buildLLMInputFirst(chatLog: String): String =
