@@ -201,15 +201,16 @@ class LLMManager {
                             )
                             put("stop", stop)
                         }
-                    println("\n$llmRequest\n")
+                    // println("\n$llmRequest\n")
                     val requestBody = llmRequest.toString().toRequestBody()
+                    // println(apiTokenChat)
                     val request =
-                        if (apiTokenChat != null && apiTokenChat == "") {
+                        if (apiTokenChat != null && apiTokenChat != "") {
                             Request
                                 .Builder()
                                 .url(llmUrlChat!!)
-                                .header("Content-Type", "application/json")
-                                .header("Authorization", apiTokenChat)
+                                .addHeader("Authorization", "Bearer $apiTokenChat")
+                                .addHeader("Content-Type", "application/json")
                                 .post(requestBody)
                                 .build()
                         } else {
@@ -220,26 +221,39 @@ class LLMManager {
                                 .post(requestBody)
                                 .build()
                         }
+                    // println(request.headers)
                     client.newCall(request).execute().use { response ->
+                        val outputBody = response.body?.string()
+                        println(outputBody)
                         if (!response.isSuccessful) {
                             println(response.message)
                             throw IOException("Unexpected code $response")
                         }
-                        val outputJson = Json.decodeFromString<JsonObject>(response.body!!.string())
+                        val outputJson = Json.decodeFromString<JsonObject>(outputBody!!)
                         return@async try {
-                            outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["message"]!!.jsonPrimitive.content.trim().split(
-                                cleanupRegex,
-                            )[0]
-                        } catch (e: NullPointerException) {
-                            outputJson.jsonObject["message"]!!
+                            outputJson.jsonObject["choices"]!!
+                                .jsonArray[0]
+                                .jsonObject["message"]!!
+                                .jsonObject["content"]!!
                                 .jsonPrimitive.content
                                 .trim()
-                                .split(cleanupRegex)[0]
+//                                .split(
+//                                    cleanupRegex,
+//                                )[0]
+                        } catch (e: NullPointerException) {
+                            try {
+                                outputJson.jsonObject["message"]!!
+                                    .jsonPrimitive.content
+                                    .trim()
+                                // .split(cleanupRegex)[0]
+                            } catch (e: NullPointerException) {
+                                throw IOException()
+                            }
                         }
                     }
                 }.await()
             typing.cancel()
-            return@runBlocking response
+            return@runBlocking removeGarbage(response)
         }
     }
 
@@ -300,7 +314,7 @@ class LLMManager {
                             // put("character", prompt)
                             put("stop", stop)
                         }
-                    println("\n$llmRequest\n")
+                    // println("\n$llmRequest\n")
                     val requestBody = llmRequest.toString().toRequestBody()
                     val request =
                         if (apiToken != null && apiToken == "") {
@@ -321,22 +335,36 @@ class LLMManager {
                         }
                     client.newCall(request).execute().use { response ->
                         if (!response.isSuccessful) throw IOException("Unexpected code $response")
-                        val outputJson = Json.decodeFromString<JsonObject>(response.body!!.string())
+                        val outputBody = response.body!!.string()
+                        println(outputBody)
+                        val outputJson = Json.decodeFromString<JsonObject>(outputBody)
                         return@async try {
-                            outputJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim().split(
-                                cleanupRegex,
-                            )[0]
+                            outputJson.jsonObject["choices"]!!
+                                .jsonArray[0]
+                                .jsonObject["text"]!!
+                                .jsonPrimitive.content
+                                .trim()
+//                                .split(
+//                                cleanupRegex,
+//                            )[0]
                         } catch (e: NullPointerException) {
                             outputJson.jsonObject["content"]!!
                                 .jsonPrimitive.content
                                 .trim()
-                                .split(cleanupRegex)[0]
+                            // .split(cleanupRegex)[0]
                         }
                     }
                 }.await()
             typing.cancel()
-            return@runBlocking response
+            return@runBlocking removeGarbage(response)
         }
+    }
+
+    private fun removeGarbage(string: String): String {
+        if (string.startsWith("\u003c|start_header_id|\u003eassistant\u003c|end_header_id|\u003e\n\n")) {
+            return string.removePrefix("\u003c|start_header_id|\u003eassistant\u003c|end_header_id|\u003e\n\n")
+        }
+        return string
     }
 
     suspend fun generationContinue(message: Message): String {

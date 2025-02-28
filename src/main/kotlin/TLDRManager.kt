@@ -199,17 +199,20 @@ class TLDRManager {
                         "$tldrFirst\n" +
                         "in summary:\n$tldrSecond"
                 println("$charName: $botResponse")
+                println("Completed with completion mode")
                 reply(message, botResponse)
             } else {
                 val botResponse = requestChatMode(messagesLog, author, channel, message, currentTime, false)
                 println("$charName: $botResponse")
                 reply(message, botResponse)
+                println("Completed with chat mode")
             }
         } catch (e: LLMAPIException) {
             if (!preferChatAPI) {
                 val botResponse = requestChatMode(messagesLog, author, channel, message, currentTime, false)
                 println("$charName: $botResponse")
                 reply(message, botResponse)
+                println("Completed with chat mode")
             } else {
                 val chatLog = messagesLog.joinToString("\n")
                 val inputToLLMFirst = buildLLMInputFirst(chatLog)
@@ -293,6 +296,7 @@ class TLDRManager {
                         "$tldrFirst\n" +
                         "in summary:\n$tldrSecond"
                 println("$charName: $botResponse")
+                println("Completed with completion mode")
                 reply(message, botResponse)
             }
         }
